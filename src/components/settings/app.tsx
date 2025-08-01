@@ -23,6 +23,7 @@ import {
     Dropdown,
     IDropdownOption,
     PrimaryButton,
+    ToggleBase,
 } from "@fluentui/react"
 import DangerButton from "../utils/danger-button"
 
@@ -40,6 +41,7 @@ type AppTabState = {
     itemSize: string
     cacheSize: string
     deleteIndex: string
+    iconStatus: boolean
 }
 
 class AppTab extends React.Component<AppTabProps, AppTabState> {
@@ -52,6 +54,7 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             itemSize: null,
             cacheSize: null,
             deleteIndex: null,
+            iconStatus: window.settings.getIconStatus()
         }
         this.getItemSize()
         this.getCacheSize()
@@ -91,6 +94,11 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
     ]
     onFetchIntervalChanged = (item: IDropdownOption) => {
         this.props.setFetchInterval(item.key as number)
+    }
+
+    toggleIcon = () => {
+        window.settings.toggleIconStatus()
+        this.setState({ iconStatus: window.settings.getIconStatus() })
     }
 
     searchEngineOptions = (): IDropdownOption[] =>
@@ -220,6 +228,13 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                     />
                 </Stack.Item>
             </Stack>
+
+            <Toggle
+                label="Use custom icons when available"
+                checked={this.state.iconStatus}
+                onText="Enabled"
+                offText="Disabled"
+                onChanged={this.toggleIcon} />
 
             <Stack horizontal verticalAlign="baseline">
                 <Stack.Item grow>

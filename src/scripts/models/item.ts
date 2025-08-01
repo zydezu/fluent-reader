@@ -5,6 +5,7 @@ import type { MyParserItem } from "../utils"
 import {
     domParser,
     htmlDecode,
+    parseYouTubeContent,
     ActionStatus,
     AppThunk,
     platformCtrl,
@@ -99,6 +100,13 @@ export class RSSItem {
             !item.thumb.startsWith("http://")
         ) {
             delete item.thumb
+        }
+        if (parsed.videoMeta) {
+            item.thumb = item.thumb ? item.thumb : parsed.videoMeta["media:thumbnail"][0].$.url
+            item.snippet = item.snippet ? item.snippet : parsed.videoMeta["media:description"][0] || ""
+            const views = parsed.videoMeta["media:community"][0]["media:statistics"][0].$.views
+            const likes = parsed.videoMeta["media:community"][0]["media:starRating"][0].$.count
+            item.content = parseYouTubeContent(item.link.replace("watch?v=","embed/"), views, likes, item.snippet)
         }
     }
 }

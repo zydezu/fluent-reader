@@ -3,6 +3,7 @@ import * as db from "../db"
 import lf from "lovefield"
 import {
     fetchFavicon,
+    fetchYTChannelIcon,
     ActionStatus,
     AppThunk,
     parseRSS,
@@ -429,8 +430,8 @@ export function updateFavicon(
         }
         const promises = sids.map(async sid => {
             const { originUrl, url }= initSources[sid]
-            let favicon = (await fetchFavicon(originUrl || url)) || ""
             const source = getState().sources[sid]
+            let favicon = (await fetchFavicon(originUrl || url)) || ""
             if (
                 source &&
                 source.url === url &&
