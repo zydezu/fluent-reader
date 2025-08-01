@@ -385,7 +385,7 @@ export function initIntl(): AppThunk<Promise<void>> {
             .init({
                 currentLocale: locale,
                 locales: locales,
-                fallbackLocale: "en-US",
+                fallbackLocale: "en-GB",
             })
             .then(() => {
                 dispatch(initIntlDone(locale))
