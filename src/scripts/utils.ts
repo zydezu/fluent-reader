@@ -97,21 +97,45 @@ export async function parseRSS(url: string) {
 export const domParser = new DOMParser()
 
 export async function fetchYTChannelIcon(url: string) {
-    let channelId = url.split("=")[1]
-    url = url.split("/").slice(0, 3).join("/")
-    let channelUrl = url + '/channel/' + channelId
-    let result = await fetch(channelUrl, { credentials: 'omit', })
-    if (result.ok) {
-        let html = await result.text()
-        let dom = domParser.parseFromString(html, "text/html")
-        let links = dom.getElementsByTagName("link")
-        for (let link of links) {
-            let rel = link.getAttribute("rel")
-            if (rel === "image_src" && link.hasAttribute("href")) {
-                let href = link.getAttribute("href")
-                return href.replace("=s900", "=s16")
+    let channelId = "";
+
+    try {
+        const parsedUrl = new URL(url);
+
+        channelId = parsedUrl.searchParams.get("channel_id") || "";
+
+        if (!channelId) {
+            const match = parsedUrl.pathname.match(/\/channel\/(UC[\w-]+)/);
+            if (match) {
+                channelId = match[1];
             }
         }
+
+        if (!channelId) {
+            return null;
+        }
+
+        const channelUrl = `https://www.youtube.com/channel/${channelId}`;
+
+        const result = await fetch(channelUrl, { credentials: 'omit' });
+        if (!result.ok) {
+            return null;
+        }
+
+        const html = await result.text();
+        const dom = new DOMParser().parseFromString(html, "text/html");
+        const links = dom.getElementsByTagName("link");
+
+        for (let link of links) {
+            if (link.getAttribute("rel") === "image_src" && link.hasAttribute("href")) {
+                const href = link.getAttribute("href")!;
+                return href.replace("=s900", "=s16");
+            }
+        }
+
+        return null;
+    } catch (e) {
+        return null;
     }
 }
 
