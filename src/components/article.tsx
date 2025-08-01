@@ -360,7 +360,7 @@ class Article extends React.Component<ArticleProps, ArticleState> {
                     <p className="date">
                         {this.props.item.date.toLocaleString(
                             this.props.locale,
-                            { hour12: !this.props.locale.startsWith("zh") }
+                            { hour12: !["zh-CN", "zh-TW", "en-GB", "fr-FR", "de", "tr", "ja", "sv", "uk", "it", "nl", "ko", "ru", "pt-BR", "pt-PT", "cs"].includes(this.props.locale) }
                         )}
                     </p>
                     <article></article>
