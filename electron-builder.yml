@@ -69,6 +69,6 @@ linux:
     target:
         - AppImage
     icon: build/icons
-    category: Utility
+    category: Network;Feed;
     desktop:
         StartupWMClass: fluent-reader
