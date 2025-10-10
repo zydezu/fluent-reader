@@ -15,6 +15,7 @@ import {
 } from "office-ui-fabric-react/lib/ContextualMenu"
 import { closeContextMenu, ContextMenuType } from "../scripts/models/app"
 import {
+    fetchItems,
     markAllRead,
     markRead,
     markUnread,
@@ -521,7 +522,7 @@ function GroupContextMenu() {
             text: intl.get("nav.refresh"),
             iconProps: { iconName: "Sync" },
             onClick: () => {
-                dispatch(markAllRead(sids))
+                dispatch(fetchItems(true, sids))
             },
         },
         {
