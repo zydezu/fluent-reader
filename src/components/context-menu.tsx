@@ -13,7 +13,7 @@ import {
     ContextualMenuItemType,
     DirectionalHint,
 } from "office-ui-fabric-react/lib/ContextualMenu"
-import { closeContextMenu, ContextMenuType } from "../scripts/models/app"
+import { closeContextMenu, ContextMenuType, toggleSettings } from "../scripts/models/app"
 import {
     fetchItems,
     markAllRead,
@@ -530,7 +530,7 @@ function GroupContextMenu() {
             text: intl.get("context.manageSources"),
             iconProps: { iconName: "Settings" },
             onClick: () => {
-                dispatch(markAllRead(sids))
+                dispatch(toggleSettings())
             },
         },
     ]
