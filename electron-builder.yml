@@ -68,7 +68,7 @@ nsis:
 linux:
     target:
         - AppImage
-    icon: build/icons
+    icon: icons
     category: Network;Feed;
     desktop:
         StartupWMClass: fluent-reader
