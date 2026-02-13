@@ -12,20 +12,12 @@
 
 ## Download
 
-For Windows 10 users, the recommended way of installation is through [Microsoft Store](https://www.microsoft.com/store/apps/9P71FC94LRH8?cid=github). 
-This enables auto-update and experimental ARM64 support. 
-macOS users can also get Fluent Reader from the [Mac App Store](https://apps.apple.com/app/id1520907427).
-
-If you are using Linux or an older version of Windows, you can [get Fluent Reader from GitHub releases](https://github.com/yang991178/fluent-reader/releases).
-
-### Mobile App
-
-The repo of the mobile version of this app [can be found here](https://github.com/yang991178/fluent-reader-lite).
+You can [get Fluent Reader from GitHub releases](https://github.com/yang991178/fluent-reader/releases).
 
 ## Features
 
 <p align="center">
-  <img src="https://github.com/yang991178/fluent-reader/raw/master/docs/imgs/screenshot.jpg">
+<img width="1200" height="700" alt="image" src="https://github.com/user-attachments/assets/6aaad9d7-b58b-450e-8144-ae8719ab2e12" />
 </p>
 
 - A modern UI inspired by Fluent Design System with full dark mode support.
