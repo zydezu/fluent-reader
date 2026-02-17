@@ -205,7 +205,6 @@ class Nav extends React.Component<NavProps, NavState> {
                         onClick={this.props.settings}>
                         <Icon iconName="Settings" />
                     </a>
-                    <span className="seperator"></span>
                     <a
                         className="btn system"
                         title={intl.get("nav.minimize")}

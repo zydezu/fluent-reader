@@ -7,7 +7,7 @@ import { SourceTextDirection } from "./models/source"
 
 let lightTheme: IPartialTheme = {
     defaultFontStyle: {
-        fontFamily: '"Segoe UI", "Source Han Sans Regular", sans-serif',
+        fontFamily: '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif',
     },
 }
 let darkTheme: IPartialTheme = {
@@ -60,7 +60,7 @@ export function setThemeDefaultFont(locale: string) {
             break
         default:
             lightTheme.defaultFontStyle.fontFamily =
-                '"Segoe UI", "Source Han Sans Regular", sans-serif'
+                '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif'
     }
     darkTheme.defaultFontStyle.fontFamily =
         lightTheme.defaultFontStyle.fontFamily
