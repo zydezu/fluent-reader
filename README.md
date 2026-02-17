@@ -60,6 +60,12 @@ electron-builder create-self-signed-cert
 # Package the app for Windows
 npm run package-win
 
+# Package the app for Linux
+npm run package-linux
+
+# Package the app for Mac
+npm run package-mac
+
 ```
 
 ### Developed with

@@ -169,7 +169,7 @@
         "deleteGroup": "Delete group",
         "chooseGroup": "Select a group",
         "addToGroup": "Add to ...",
-        "groupHint": "Double click on group to edit sources. Drag and drop to reorder."
+        "groupHint": "Click on group to edit sources. Drag and drop to reorder."
     },
     "rules": {
         "intro": "Automatically mark articles or send notifications with regular expressions.",
