@@ -3,6 +3,7 @@ import { Card } from "./card"
 import CardInfo from "./info"
 import Highlights from "./highlights"
 import { SourceTextDirection } from "../../scripts/models/source"
+import { ProxiedImage } from "../utils/proxied-image"
 
 const className = (props: Card.Props) => {
     let cn = ["card", "default-card"]
@@ -19,11 +20,11 @@ const DefaultCard: React.FunctionComponent<Card.Props> = props => (
         data-iid={props.item._id}
         data-is-focusable>
         {props.item.thumb ? (
-            <img className="bg" src={props.item.thumb} />
+            <ProxiedImage className="bg" src={props.item.thumb} />
         ) : null}
         <div className="bg"></div>
         {props.item.thumb ? (
-            <img className="head" src={props.item.thumb} />
+            <ProxiedImage className="head" src={props.item.thumb} />
         ) : null}
         <CardInfo source={props.source} item={props.item} />
         <h3 className="title">

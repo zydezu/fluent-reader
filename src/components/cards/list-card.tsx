@@ -4,6 +4,7 @@ import CardInfo from "./info"
 import Highlights from "./highlights"
 import { ViewConfigs } from "../../schema-types"
 import { SourceTextDirection } from "../../scripts/models/source"
+import { ProxiedImage } from "../utils/proxied-image"
 
 const className = (props: Card.Props) => {
     let cn = ["card", "list-card"]
@@ -23,7 +24,7 @@ const ListCard: React.FunctionComponent<Card.Props> = props => (
         data-is-focusable>
         {props.item.thumb && props.viewConfigs & ViewConfigs.ShowCover ? (
             <div className="head">
-                <img src={props.item.thumb} />
+                <ProxiedImage src={props.item.thumb} />
             </div>
         ) : null}
         <div className="data">
