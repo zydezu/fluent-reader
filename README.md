@@ -57,6 +57,7 @@ npm run electron
 
 # Generate certificate for signature
 electron-builder create-self-signed-cert
+
 # Package the app for Windows
 npm run package-win
 
