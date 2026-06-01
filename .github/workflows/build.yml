@@ -41,3 +41,10 @@ jobs:
         with:
           name: fluent-reader-${{ runner.os }}
           path: dist/
+
+  Publish_and_Release:
+    name: Publish and Release (All Artifacts)
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
