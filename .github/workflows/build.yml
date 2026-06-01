@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Package for Windows
+        if: runner.os == 'Windows'
+        run: npm run package-win
+
+      - name: Package for Linux
+        if: runner.os == 'Linux'
+        run: npm run package-linux
+
+      - name: Package for macOS
+        if: runner.os == 'macOS'
+        run: npm run package-mac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fluent-reader-${{ runner.os }}
+          path: dist/
