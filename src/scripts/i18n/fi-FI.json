@@ -111,6 +111,7 @@
         "fetchSuccess": "Noudettiin onnistuneesti {count, plural, =1 {# artikkeli} other {# artikkelia}}.",
         "networkError": "Tapahtui verkkovirhe.",
         "parseError": "XML-syötteen jäsentämisessä tapahtui virhe.",
+        "parseHTMLResponse": "Palvelin palautti HTML-sivun RSS-syötteen sijaan. Syötteen URL voi vaatia selaimen tai se on estetty botinsuojauksella.",
         "syncFailure": "Palvelun kanssa synkronointi epäonnistui"
     },
     "menu": {

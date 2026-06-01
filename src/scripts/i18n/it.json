@@ -33,6 +33,7 @@
         "fetchSuccess": "{count, plural, =1 {# articolo} other {# articoli}} caricato con successo",
         "networkError": "è occorso un errore di rete",
         "parseError": "è occorso un errore nel anallizzare il feed rss",
+        "parseHTMLResponse": "Il server ha restituito una pagina HTML invece di un feed RSS. L'URL del feed potrebbe richiedere un browser o essere bloccato dalla protezione anti-bot.",
         "syncFailure": "Errore nel sicronizzarsi con il servizio"
     },
     "nav": {

@@ -34,6 +34,7 @@
         "fetchSuccess": "{count, plural, =1 {# Artigo} other {# Artigos}} foram atualizados com sucesso.",
         "networkError": "Ocorreu um erro na rede.",
         "parseError": "Ocorreu um erro ao analisar o feed XML.",
+        "parseHTMLResponse": "O servidor devolveu uma página HTML em vez de um feed RSS. O URL do feed pode exigir um navegador ou estar bloqueado por proteção anti-bot.",
         "syncFailure": "Falha ao sincronizar com o serviço"
     },
     "nav": {

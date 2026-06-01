@@ -34,6 +34,7 @@
         "fetchSuccess": "成功加载 {count} 篇文章",
         "networkError": "连接订阅源时出错",
         "parseError": "解析XML信息流时出错",
+        "parseHTMLResponse": "服务器返回的是 HTML 页面而非 RSS 信息流。该订阅源可能需要浏览器访问或被反机器人保护屏蔽。",
         "syncFailure": "无法与服务同步"
     },
     "nav": {

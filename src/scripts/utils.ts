@@ -82,10 +82,17 @@ export async function parseRSS(url: string) {
         throw new Error(intl.get("log.networkError"))
     }
     if (result && result.ok) {
+        const content = await decodeFetchResponse(result)
+        const contentType = result.headers.get("content-type") || ""
+        if (
+            contentType.includes("text/html") ||
+            /^\s*<!DOCTYPE\s+html/i.test(content) ||
+            /^\s*<html/i.test(content)
+        ) {
+            throw new Error(intl.get("log.parseHTMLResponse"))
+        }
         try {
-            return await rssParser.parseString(
-                await decodeFetchResponse(result)
-            )
+            return await rssParser.parseString(content)
         } catch {
             throw new Error(intl.get("log.parseError"))
         }

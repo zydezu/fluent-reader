@@ -34,6 +34,7 @@
         "fetchSuccess": "Úspěšně načten {count, plural, =1 {# article} other {# articles}}.",
         "networkError": "Došlo k chybě sítě.",
         "parseError": "Při analýze kanálu XML došlo k chybě.",
+        "parseHTMLResponse": "Server vrátil HTML stránku místo RSS kanálu. Adresa URL kanálu může vyžadovat prohlížeč nebo je blokována ochranou proti botům.",
         "syncFailure": "Došlo k chybě při synchronizaci se službou"
     },
     "nav": {

@@ -33,6 +33,7 @@
         "fetchSuccess": "Artikelen opgehaald: {count, plural, =1 {# article} other {# articles}}.",
         "networkError": "Er is een netwerkfout opgetreden.",
         "parseError": "Er is een fout opgetreden tijdens het verwerken van de xml-feed.",
+        "parseHTMLResponse": "De server retourneerde een HTML-pagina in plaats van een RSS-feed. De feed-URL vereist mogelijk een browser of wordt geblokkeerd door botbeveiliging.",
         "syncFailure": "Het synchroniseren met de dienst is mislukt"
     },
     "nav": {

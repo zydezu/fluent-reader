@@ -34,6 +34,7 @@
         "fetchSuccess": "Successfully fetched {count, plural, =1 {# article} other {# articles}}.",
         "networkError": "A network error has occurred.",
         "parseError": "An error has occurred when parsing the XML feed.",
+        "parseHTMLResponse": "The server returned an HTML page instead of an RSS feed. The feed URL may require a browser or be blocked by anti-bot protection.",
         "syncFailure": "Failed to sync with service"
     },
     "nav": {

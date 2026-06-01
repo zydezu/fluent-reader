@@ -33,6 +33,7 @@
         "fetchSuccess": "Erfolgreich {count, plural, =1 {# Artikel} other {# Artikel}} geladen.",
         "networkError": "Netzwerk-Fehler aufgetreten.",
         "parseError": "Fehler beim Lesen des XML-Feeds.",
+        "parseHTMLResponse": "Der Server hat eine HTML-Seite anstelle des RSS-Feeds zurückgegeben. Die Feed-URL erfordert möglicherweise einen Browser oder wird durch Botschutz blockiert.",
         "syncFailure": "Fehler beim Synchronisieren."
     },
     "nav": {

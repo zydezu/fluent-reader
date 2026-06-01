@@ -33,6 +33,7 @@
         "fetchSuccess": "{count} 件の記事をロードしました。",
         "networkError": "フィードの接続にエラーが発生しました。",
         "parseError": "XMLストリームの解析にエラーが発生しました。",
+        "parseHTMLResponse": "サーバーがRSSフィードの代わりにHTMLページを返しました。フィードURLはブラウザーが必要か、ボット対策によりブロックされている可能性があります。",
         "syncFailure": "サービスの同期に失敗しました。"
     },
     "nav": {

@@ -33,6 +33,7 @@
         "fetchSuccess": "Récupération réussi de {count, plural, =1 {# article} other {# articles}}.",
         "networkError": "Une erreur de réseau s'est produite.",
         "parseError": "Une erreur s'est produite lors de l'analyse du flux XML.",
+        "parseHTMLResponse": "Le serveur a renvoyé une page HTML au lieu d'un flux RSS. L'URL du flux peut nécessiter un navigateur ou être bloquée par une protection anti-bot.",
         "syncFailure": "Échec de synchronisation avec le service"
     },
     "nav": {

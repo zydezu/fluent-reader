@@ -33,6 +33,7 @@
         "fetchSuccess": "{count, plural, =1 {# yazı} other {# yazı}} başarıyla güncellendi.",
         "networkError": "Ağ hatası oluştu.",
         "parseError": "XML beslemesi ayrıştırılırken bir hata oluştu..",
+        "parseHTMLResponse": "Sunucu, RSS beslemesi yerine bir HTML sayfası döndürdü. Besleme URL'si bir tarayıcı gerektiriyor veya bot koruması tarafından engelleniyor olabilir.",
         "syncFailure": "Hizmet ile senkronize edilemedi"
     },
     "nav": {

@@ -30,7 +30,10 @@
     "log": {
         "empty": "Sin notificaciones",
         "fetchFailure": "Falló al cargar fuente \"{name}\".",
-        "fetchSuccess": "Recuperado exitosamente {count, plural, =1 {# artículo} other {# artículos}}."
+        "fetchSuccess": "Recuperado exitosamente {count, plural, =1 {# artículo} other {# artículos}}.",
+        "networkError": "Se ha producido un error de red.",
+        "parseError": "Se ha producido un error al analizar el feed XML.",
+        "parseHTMLResponse": "El servidor devolvió una página HTML en lugar de un feed RSS. La URL del feed puede requerir un navegador o estar bloqueada por protección antibots."
     },
     "nav": {
         "menu": "Menú",

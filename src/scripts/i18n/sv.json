@@ -33,6 +33,7 @@
         "fetchSuccess": "Lyckades hämta {count, plural, =1 {# artikel} other {# artiklar}}.",
         "networkError": "Ett nätverksfel uppstod.",
         "parseError": "Ett fel uppstod vid tolkning av XML-flödet.",
+        "parseHTMLResponse": "Servern returnerade en HTML-sida istället för ett RSS-flöde. Flödets URL kan kräva en webbläsare eller blockeras av botskydd.",
         "syncFailure": "Kunde inte synkronisera med tjänsten"
     },
     "nav": {
