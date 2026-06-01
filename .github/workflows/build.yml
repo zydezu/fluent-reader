@@ -8,39 +8,82 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-
+  linux_x64:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - run: npm ci
-
       - run: npm run build
-
-      - name: Package for Windows
-        if: runner.os == 'Windows'
-        run: npx electron-builder -w --x64 -p never
-
-      - name: Package for Linux
-        if: runner.os == 'Linux'
-        run: npx electron-builder --linux --x64 -p never
-
-      - name: Package for macOS
-        if: runner.os == 'macOS'
-        run: npx electron-builder --mac --x64 -p never
-
+      - run: npx electron-builder --linux --x64 -p never
       - uses: actions/upload-artifact@v4
         with:
-          name: fluent-reader-${{ runner.os }}
-          path: dist/
+          name: Fluent-Reader_Linux_x64
+          path: bin/linux/x64/
+
+  macos_x64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder --mac --x64 -p never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fluent-Reader_MacOS_x64
+          path: bin/darwin/x64/
+
+  macos_arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder --mac --arm64 -p never || true
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: Fluent-Reader_MacOS_ARM64
+          path: bin/darwin/arm64/
+
+  windows_x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder -w --x64 -p never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fluent-Reader_Windows_x64
+          path: bin/win32/x64/
+
+  windows_arm64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder -w --arm64 -p never || true
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: Fluent-Reader_Windows_ARM64
+          path: bin/win32/arm64/
 
   Publish_and_Release:
     name: Publish and Release (All Artifacts)
@@ -48,3 +91,62 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    needs:
+      - linux_x64
+      - macos_x64
+      - macos_arm64
+      - windows_x64
+      - windows_arm64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Linux x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Fluent-Reader_Linux_x64
+          path: releases
+        continue-on-error: true
+      - name: Download macOS x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Fluent-Reader_MacOS_x64
+          path: releases
+        continue-on-error: true
+      - name: Download macOS ARM64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Fluent-Reader_MacOS_ARM64
+          path: releases
+        continue-on-error: true
+      - name: Download Windows x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Fluent-Reader_Windows_x64
+          path: releases
+        continue-on-error: true
+      - name: Download Windows ARM64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Fluent-Reader_Windows_ARM64
+          path: releases
+        continue-on-error: true
+      - name: Check for artifacts
+        id: check
+        run: |
+          if ls releases/* 1> /dev/null 2>&1; then echo "artifact_exists=true" >> $GITHUB_OUTPUT; else echo "artifact_exists=false" >> $GITHUB_OUTPUT; fi
+      - name: List files
+        run: ls -la releases/ || true
+      - name: Set up release metadata
+        run: |
+          echo "REPOSITORY_NAME=$(basename $GITHUB_REPOSITORY)" >> $GITHUB_ENV
+          echo "DATETIME=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+      - name: Create release
+        if: steps.check.outputs.artifact_exists == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.REPOSITORY_NAME }}-${{ env.DATETIME }}
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          name: Nightly-${{ env.REPOSITORY_NAME }}-${{ env.DATETIME }}
+          files: |
+            releases/*
