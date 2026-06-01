@@ -1,7 +1,7 @@
 appId: DevHYLiu.FluentReader
 buildVersion: 29
 productName: Fluent Reader
-copyright: Copyright © 2020 Haoyuan Liu
+copyright: Copyright © 2026 Haoyuan Liu
 files:
   - "./dist/**/*"
   - "!./dist/fonts.vbs"

@@ -1,74 +1,74 @@
 appId: me.hyliu.fluentreader
 productName: Fluent Reader
-copyright: Copyright © 2020 Haoyuan Liu
+copyright: Copyright © 2026 Haoyuan Liu
 files:
-    - "./dist/**/*"
-    - "!./dist/fontlist"
-    - "!**/*.js.map"
+  - "./dist/**/*"
+  - "!./dist/fontlist"
+  - "!**/*.js.map"
 directories:
-    output: "./bin/${platform}/${arch}/"
+  output: "./bin/${platform}/${arch}/"
 mac:
-    darkModeSupport: true
-    target:
-        - dmg
-    category: public.app-category.news
-    electronLanguages:
-        - zh_CN
-        - zh_TW
-        - en
-        - fr
-        - es
-        - de
-        - tr
-        - ja
-        - sv
-        - uk
-        - it
-        - nl
-        - ko
-        - ru
-        - pt_BR
-        - pt_PT
-        - cs
+  darkModeSupport: true
+  target:
+    - dmg
+  category: public.app-category.news
+  electronLanguages:
+    - zh_CN
+    - zh_TW
+    - en
+    - fr
+    - es
+    - de
+    - tr
+    - ja
+    - sv
+    - uk
+    - it
+    - nl
+    - ko
+    - ru
+    - pt_BR
+    - pt_PT
+    - cs
 win:
-    target:
-        - nsis
-        - zip
+  target:
+    - nsis
+    - zip
 appx:
-    applicationId: FluentReader
-    identityName: 25286HaoyuanLiu.FluentReader
-    publisher: CN=FD70E7FA-E5AC-41C4-B9C4-6E8708A6616A
-    backgroundColor: transparent
-    languages:
-        - zh-CN
-        - zh-TW
-        - en-US
-        - en-GB
-        - fr-FR
-        - es
-        - de
-        - tr
-        - ja
-        - sv
-        - uk
-        - it
-        - nl
-        - ko
-        - ru
-        - pt-BR
-        - pt-PT
-        - cs
-    showNameOnTiles: true
-    setBuildNumber: true
+  applicationId: FluentReader
+  identityName: 25286HaoyuanLiu.FluentReader
+  publisher: CN=FD70E7FA-E5AC-41C4-B9C4-6E8708A6616A
+  backgroundColor: transparent
+  languages:
+    - zh-CN
+    - zh-TW
+    - en-US
+    - en-GB
+    - fr-FR
+    - es
+    - de
+    - tr
+    - ja
+    - sv
+    - uk
+    - it
+    - nl
+    - ko
+    - ru
+    - pt-BR
+    - pt-PT
+    - cs
+  showNameOnTiles: true
+  setBuildNumber: true
 nsis:
-    oneClick: false
-    perMachine: true
-    allowToChangeInstallationDirectory: true
-    deleteAppDataOnUninstall: true
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: true
 linux:
-    target:
-        - AppImage
-    icon: icons
-    category: Network;Feed;
-    desktop:
-        StartupWMClass: fluent-reader
+  target:
+    - AppImage
+  icon: icons
+  category: Network;Feed;
+  desktop:
+    StartupWMClass: fluent-reader
