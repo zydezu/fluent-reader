@@ -23,15 +23,18 @@ import {
     RSSSource,
     SourceOpenTarget,
 } from "../../scripts/models/source"
+import { SourceGroup } from "../../schema-types"
 import { urlTest } from "../../scripts/utils"
 import DangerButton from "../utils/danger-button"
 
 type SourcesTabProps = {
     sources: SourceState
+    groups: SourceGroup[]
     serviceOn: boolean
     sids: number[]
     acknowledgeSIDs: () => void
-    addSource: (url: string) => void
+    addSource: (url: string) => Promise<number>
+    addToGroup: (groupIndex: number, sid: number) => void
     updateSourceName: (source: RSSSource, name: string) => void
     updateSourceIcon: (source: RSSSource, iconUrl: string) => Promise<void>
     updateSourceOpenTarget: (
@@ -51,6 +54,7 @@ type SourcesTabState = {
 } & {
     selectedSource: RSSSource
     selectedSources: RSSSource[]
+    newSourceGroup: number
 }
 
 const enum EditDropdownKeys {
@@ -67,6 +71,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         this.state = {
             newUrl: "",
             newSourceName: "",
+            newSourceGroup: null,
             selectedSource: null,
             selectedSources: null,
         }
@@ -125,6 +130,17 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             data: "string",
         },
     ]
+
+    groupOptions = (): IDropdownOption[] =>
+        this.props.groups
+            .filter(g => g.isMultiple)
+            .map(g => ({ key: g.index, text: g.name }))
+
+    onNewSourceGroupChange = (_, option: IDropdownOption) => {
+        this.setState({
+            newSourceGroup: option ? (option.key as number) : null,
+        })
+    }
 
     sourceEditOptions = (): IDropdownOption[] => [
         { key: EditDropdownKeys.Name, text: intl.get("name") },
@@ -205,7 +221,17 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
     addSource = (event: React.FormEvent) => {
         event.preventDefault()
         let trimmed = this.state.newUrl.trim()
-        if (urlTest(trimmed)) this.props.addSource(trimmed)
+        if (urlTest(trimmed)) {
+            let groupIndex = this.state.newSourceGroup
+            this.props
+                .addSource(trimmed)
+                .then(sid => {
+                    if (groupIndex !== null) {
+                        this.props.addToGroup(groupIndex, sid)
+                    }
+                })
+                .catch(() => {})
+        }
     }
 
     onOpenTargetChange = (_, option: IChoiceGroupOption) => {
@@ -268,6 +294,15 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                             id="newUrl"
                             name="newUrl"
                             onChange={this.handleInputChange}
+                        />
+                    </Stack.Item>
+                    <Stack.Item>
+                        <Dropdown
+                            placeholder={intl.get("groups.chooseGroup")}
+                            selectedKey={this.state.newSourceGroup}
+                            options={this.groupOptions()}
+                            onChange={this.onNewSourceGroupChange}
+                            style={{ width: 150 }}
                         />
                     </Stack.Item>
                     <Stack.Item>

@@ -12,20 +12,26 @@ import {
     deleteSources,
     toggleSourceHidden,
 } from "../../scripts/models/source"
-import { importOPML, exportOPML } from "../../scripts/models/group"
+import {
+    importOPML,
+    exportOPML,
+    addSourceToGroup,
+} from "../../scripts/models/group"
 import { AppDispatch, validateFavicon } from "../../scripts/utils"
 import { saveSettings, toggleSettings } from "../../scripts/models/app"
 import { SyncService } from "../../schema-types"
 
 const getSources = (state: RootState) => state.sources
+const getGroups = (state: RootState) => state.groups
 const getServiceOn = (state: RootState) =>
     state.service.type !== SyncService.None
 const getSIDs = (state: RootState) => state.app.settings.sids
 
 const mapStateToProps = createSelector(
-    [getSources, getServiceOn, getSIDs],
-    (sources, serviceOn, sids) => ({
+    [getSources, getGroups, getServiceOn, getSIDs],
+    (sources, groups, serviceOn, sids) => ({
         sources: sources,
+        groups: groups.map((g, i) => ({ ...g, index: i })),
         serviceOn: serviceOn,
         sids: sids,
     })
@@ -35,6 +41,8 @@ const mapDispatchToProps = (dispatch: AppDispatch) => {
     return {
         acknowledgeSIDs: () => dispatch(toggleSettings(true)),
         addSource: (url: string) => dispatch(addSource(url)),
+        addToGroup: (groupIndex: number, sid: number) =>
+            dispatch(addSourceToGroup(groupIndex, sid)),
         updateSourceName: (source: RSSSource, name: string) => {
             dispatch(updateSource({ ...source, name: name } as RSSSource))
         },
