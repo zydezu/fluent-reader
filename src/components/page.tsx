@@ -8,7 +8,6 @@ import ArticleSearch from "./utils/article-search"
 type PageProps = {
     menuOn: boolean
     contextOn: boolean
-    settingsOn: boolean
     feeds: string[]
     itemId: number
     itemFromFeed: boolean
@@ -28,22 +27,20 @@ class Page extends React.Component<PageProps> {
     render = () =>
         this.props.viewType !== ViewType.List ? (
             <>
-                {this.props.settingsOn ? null : (
-                    <div
-                        key="card"
-                        className={
-                            "main" + (this.props.menuOn ? " menu-on" : "")
-                        }>
-                        <ArticleSearch />
-                        {this.props.feeds.map(fid => (
-                            <FeedContainer
-                                viewType={this.props.viewType}
-                                feedId={fid}
-                                key={fid + this.props.viewType}
-                            />
-                        ))}
-                    </div>
-                )}
+                <div
+                    key="card"
+                    className={
+                        "main" + (this.props.menuOn ? " menu-on" : "")
+                    }>
+                    <ArticleSearch />
+                    {this.props.feeds.map(fid => (
+                        <FeedContainer
+                            viewType={this.props.viewType}
+                            feedId={fid}
+                            key={fid + this.props.viewType}
+                        />
+                    ))}
+                </div>
                 {this.props.itemId && (
                     <FocusTrapZone
                         disabled={this.props.contextOn}
@@ -75,40 +72,38 @@ class Page extends React.Component<PageProps> {
             </>
         ) : (
             <>
-                {this.props.settingsOn ? null : (
-                    <div
-                        key="list"
-                        className={
-                            "list-main" + (this.props.menuOn ? " menu-on" : "")
-                        }>
-                        <ArticleSearch />
-                        <div className="list-feed-container">
-                            {this.props.feeds.map(fid => (
-                                <FeedContainer
-                                    viewType={this.props.viewType}
-                                    feedId={fid}
-                                    key={fid}
-                                />
-                            ))}
-                        </div>
-                        {this.props.itemId ? (
-                            <div className="side-article-wrapper">
-                                <ArticleContainer itemId={this.props.itemId} />
-                            </div>
-                        ) : (
-                            <div className="side-logo-wrapper">
-                                <img
-                                    className="light"
-                                    src="icons/logo-outline.svg"
-                                />
-                                <img
-                                    className="dark"
-                                    src="icons/logo-outline-dark.svg"
-                                />
-                            </div>
-                        )}
+                <div
+                    key="list"
+                    className={
+                        "list-main" + (this.props.menuOn ? " menu-on" : "")
+                    }>
+                    <ArticleSearch />
+                    <div className="list-feed-container">
+                        {this.props.feeds.map(fid => (
+                            <FeedContainer
+                                viewType={this.props.viewType}
+                                feedId={fid}
+                                key={fid}
+                            />
+                        ))}
                     </div>
-                )}
+                    {this.props.itemId ? (
+                        <div className="side-article-wrapper">
+                            <ArticleContainer itemId={this.props.itemId} />
+                        </div>
+                    ) : (
+                        <div className="side-logo-wrapper">
+                            <img
+                                className="light"
+                                src="icons/logo-outline.svg"
+                            />
+                            <img
+                                className="dark"
+                                src="icons/logo-outline-dark.svg"
+                            />
+                        </div>
+                    )}
+                </div>
             </>
         )
 }

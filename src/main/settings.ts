@@ -115,6 +115,14 @@ ipcMain.handle("set-theme", (_, theme: ThemeSettings) => {
 ipcMain.on("get-theme-dark-color", event => {
     event.returnValue = nativeTheme.shouldUseDarkColors
 })
+
+const ACCENT_COLOR_STORE_KEY = "accentColor"
+ipcMain.on("get-accent-color", event => {
+    event.returnValue = store.get(ACCENT_COLOR_STORE_KEY, "")
+})
+ipcMain.handle("set-accent-color", (_, color: string) => {
+    store.set(ACCENT_COLOR_STORE_KEY, color)
+})
 export function setThemeListener(manager: WindowManager) {
     nativeTheme.removeAllListeners()
     nativeTheme.on("updated", () => {
@@ -157,6 +165,14 @@ ipcMain.on("get-font", event => {
 })
 ipcMain.handle("set-font", (_, font: string) => {
     store.set(FONT_STORE_KEY, font)
+})
+
+const APP_FONT_STORE_KEY = "appFontFamily"
+ipcMain.on("get-app-font", event => {
+    event.returnValue = store.get(APP_FONT_STORE_KEY, "")
+})
+ipcMain.handle("set-app-font", (_, font: string) => {
+    store.set(APP_FONT_STORE_KEY, font)
 })
 
 ipcMain.on("get-all-settings", event => {

@@ -106,4 +106,6 @@ export type SchemaTypes = {
     useNeDB: boolean
     customIcon: boolean
     thumbnailResizeMode: ThumbnailResizeMode
+    accentColor: string
+    appFontFamily: string
 }

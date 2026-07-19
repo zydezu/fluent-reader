@@ -48,7 +48,7 @@ class Settings extends React.Component<SettingsProps> {
                     style={{
                         position: "absolute",
                         top: 70,
-                        left: "calc(50% - 404px)",
+                        left: "calc(50% - 524px)",
                     }}>
                     <a
                         className={
@@ -74,31 +74,49 @@ class Settings extends React.Component<SettingsProps> {
                         <PivotItem
                             headerText={intl.get("settings.sources")}
                             itemIcon="Source">
+                            <h2 className="settings-header">
+                                {intl.get("settings.sources")}
+                            </h2>
                             <SourcesTabContainer />
                         </PivotItem>
                         <PivotItem
                             headerText={intl.get("settings.grouping")}
                             itemIcon="GroupList">
+                            <h2 className="settings-header">
+                                {intl.get("settings.grouping")}
+                            </h2>
                             <GroupsTabContainer />
                         </PivotItem>
                         <PivotItem
                             headerText={intl.get("settings.rules")}
                             itemIcon="FilterSettings">
+                            <h2 className="settings-header">
+                                {intl.get("settings.rules")}
+                            </h2>
                             <RulesTabContainer />
                         </PivotItem>
                         <PivotItem
                             headerText={intl.get("settings.service")}
                             itemIcon="CloudImportExport">
+                            <h2 className="settings-header">
+                                {intl.get("settings.service")}
+                            </h2>
                             <ServiceTabContainer />
                         </PivotItem>
                         <PivotItem
                             headerText={intl.get("settings.app")}
                             itemIcon="Settings">
+                            <h2 className="settings-header">
+                                {intl.get("settings.app")}
+                            </h2>
                             <AppTabContainer />
                         </PivotItem>
                         <PivotItem
                             headerText={intl.get("settings.about")}
                             itemIcon="Info">
+                            <h2 className="settings-header">
+                                {intl.get("settings.about")}
+                            </h2>
                             <AboutTab />
                         </PivotItem>
                     </Pivot>

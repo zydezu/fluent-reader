@@ -19,6 +19,7 @@
     --white: #fff;
     --whiteConstant: #fff;
     --primary: #0078d4;
+    --primary-dark: #005a9e;
     --navHeight: 32px;
     --transition-timing: cubic-bezier(0.1, 0.9, 0.2, 1);
     --blur: saturate(150%) blur(20px);
@@ -119,7 +120,7 @@ body.linux {
     color: var(--neutralDark);
 }
 .ms-Button--commandBar.active .ms-Button-icon {
-    color: #005a9e;
+    color: var(--primary-dark);
 }
 i.ms-Nav-chevron {
     line-height: 32px;

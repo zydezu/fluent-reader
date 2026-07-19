@@ -14,6 +14,10 @@ import {
 import {
     getThemeSettings,
     setThemeSettings,
+    getAccentColor,
+    setAccentColor,
+    getAppFont,
+    setAppFont,
     exportAll,
 } from "../../scripts/settings"
 import {
@@ -28,6 +32,9 @@ import {
     IDropdownOption,
     PrimaryButton,
     ToggleBase,
+    Callout,
+    ColorPicker,
+    IColor,
 } from "@fluentui/react"
 import DangerButton from "../utils/danger-button"
 import { setResizeMode } from "../utils/proxied-image"
@@ -48,9 +55,17 @@ type AppTabState = {
     deleteIndex: string
     iconStatus: boolean
     thumbnailResizeMode: ThumbnailResizeMode
+    accentColor: string
+    accentPickerOpen: boolean
+    appFont: string
+    appFontFilter: string
+    appFontPickerOpen: boolean
 }
 
 class AppTab extends React.Component<AppTabProps, AppTabState> {
+    colorButtonRef = React.createRef<HTMLDivElement>()
+    fontButtonRef = React.createRef<HTMLDivElement>()
+
     constructor(props) {
         super(props)
         this.state = {
@@ -62,6 +77,11 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             deleteIndex: null,
             iconStatus: window.settings.getIconStatus(),
             thumbnailResizeMode: window.settings.getThumbnailResizeMode(),
+            accentColor: getAccentColor(),
+            accentPickerOpen: false,
+            appFont: getAppFont(),
+            appFontFilter: "",
+            appFontPickerOpen: false,
         }
         this.getItemSize()
         this.getCacheSize()
@@ -202,6 +222,44 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
         this.setState({ themeSettings: option.key as ThemeSettings })
     }
 
+    filteredFontList = (): string[] => {
+        const filter = this.state.appFontFilter.trim().toLowerCase()
+        if (filter === "") return window.fontList
+        return window.fontList.filter(font =>
+            font.toLowerCase().includes(filter)
+        )
+    }
+    toggleFontPicker = () => {
+        this.setState({
+            appFontPickerOpen: !this.state.appFontPickerOpen,
+            appFontFilter: "",
+        })
+    }
+    onAppFontFilterChange = (_, value: string) => {
+        this.setState({ appFontFilter: value || "" })
+    }
+    selectAppFont = (font: string) => {
+        setAppFont(font)
+        this.setState({
+            appFont: font,
+            appFontPickerOpen: false,
+            appFontFilter: "",
+        })
+    }
+
+    toggleColorPicker = () => {
+        this.setState({ accentPickerOpen: !this.state.accentPickerOpen })
+    }
+    onAccentColorChange = (_, color: IColor) => {
+        const hex = "#" + color.hex
+        setAccentColor(hex)
+        this.setState({ accentColor: hex })
+    }
+    resetAccentColor = () => {
+        setAccentColor("")
+        this.setState({ accentColor: "", accentPickerOpen: false })
+    }
+
     render = () => (
         <div className="tab-body">
             <Label>{intl.get("app.language")}</Label>
@@ -224,6 +282,88 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 onChange={this.onThemeChange}
                 selectedKey={this.state.themeSettings}
             />
+
+            <Label>Accent color</Label>
+            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+                <Stack.Item>
+                    <div
+                        ref={this.colorButtonRef}
+                        className="accent-color-swatch"
+                        style={{
+                            backgroundColor: this.state.accentColor || "#0078d4",
+                        }}
+                        onClick={this.toggleColorPicker}
+                    />
+                </Stack.Item>
+                <Stack.Item>
+                    <DefaultButton
+                        text="Reset"
+                        disabled={!this.state.accentColor}
+                        onClick={this.resetAccentColor}
+                    />
+                </Stack.Item>
+            </Stack>
+            {this.state.accentPickerOpen && (
+                <Callout
+                    target={this.colorButtonRef.current}
+                    onDismiss={this.toggleColorPicker}
+                    setInitialFocus>
+                    <ColorPicker
+                        color={this.state.accentColor || "#0078d4"}
+                        onChange={this.onAccentColorChange}
+                        alphaType="none"
+                        styles={{ root: { margin: 12 } }}
+                    />
+                </Callout>
+            )}
+
+            <Label>App font</Label>
+            <Stack horizontal>
+                <Stack.Item>
+                    <div ref={this.fontButtonRef}>
+                        <DefaultButton
+                            text={
+                                this.state.appFont === ""
+                                    ? intl.get("default")
+                                    : this.state.appFont
+                            }
+                            onClick={this.toggleFontPicker}
+                            style={{ width: 200, textAlign: "left" }}
+                        />
+                    </div>
+                </Stack.Item>
+            </Stack>
+            {this.state.appFontPickerOpen && (
+                <Callout
+                    target={this.fontButtonRef.current}
+                    onDismiss={this.toggleFontPicker}
+                    setInitialFocus>
+                    <div className="font-picker">
+                        <TextField
+                            placeholder="Search fonts"
+                            value={this.state.appFontFilter}
+                            onChange={this.onAppFontFilterChange}
+                        />
+                        <div className="font-picker-list">
+                            {this.filteredFontList().map(font => (
+                                <div
+                                    key={font}
+                                    className={
+                                        "font-picker-option" +
+                                        (font === this.state.appFont
+                                            ? " selected"
+                                            : "")
+                                    }
+                                    onClick={() => this.selectAppFont(font)}>
+                                    {font === ""
+                                        ? intl.get("default")
+                                        : font}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </Callout>
+            )}
 
             <Label>{intl.get("app.fetchInterval")}</Label>
             <Stack horizontal>

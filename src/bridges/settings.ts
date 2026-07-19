@@ -67,6 +67,13 @@ const settingsBridge = {
     shouldUseDarkColors: (): boolean => {
         return ipcRenderer.sendSync("get-theme-dark-color")
     },
+
+    getAccentColor: (): string => {
+        return ipcRenderer.sendSync("get-accent-color")
+    },
+    setAccentColor: (color: string) => {
+        ipcRenderer.invoke("set-accent-color", color)
+    },
     addThemeUpdateListener: (callback: (shouldDark: boolean) => any) => {
         ipcRenderer.on("theme-updated", (_, shouldDark) => {
             callback(shouldDark)
@@ -95,6 +102,13 @@ const settingsBridge = {
     },
     setFont: (font: string) => {
         ipcRenderer.invoke("set-font", font)
+    },
+
+    getAppFont: (): string => {
+        return ipcRenderer.sendSync("get-app-font")
+    },
+    setAppFont: (font: string) => {
+        ipcRenderer.invoke("set-app-font", font)
     },
 
     getFetchInterval: (): number => {

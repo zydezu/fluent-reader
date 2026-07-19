@@ -3,8 +3,16 @@ import { ThumbnailResizeMode } from "../../schema-types"
 import { resizeImageLocally } from "./local-resize"
 
 const IMAGE_PROXY = "https://images.weserv.nl/?url="
-const BLANK_IMAGE =
-    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7"
+// Generated via canvas instead of a hand-copied data URI - canvas pixels are
+// transparent (0,0,0,0) by default, so this is guaranteed to actually be
+// transparent (unlike several "known" 1x1 transparent GIF snippets floating
+// around online, which turn out to encode an opaque white pixel instead).
+const BLANK_IMAGE = (() => {
+    const canvas = document.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
+    return canvas.toDataURL()
+})()
 
 // Cached in-memory so every card render doesn't need a sync IPC round trip.
 // Kept in sync with the store via setResizeMode when the setting changes.
@@ -44,6 +52,7 @@ const buildProxySrc = (src: string, resize: Resize) => {
 export const ProxiedImage: React.FunctionComponent<Props> = ({
     src: originalSrc,
     resize,
+    className,
     ...rest
 }) => {
     const mode = resize ? resizeMode : ThumbnailResizeMode.Off
@@ -56,17 +65,30 @@ export const ProxiedImage: React.FunctionComponent<Props> = ({
     const [usedProxy, setUsedProxy] = React.useState(
         mode === ThumbnailResizeMode.Proxy
     )
+    // Only meaningful in Local mode: true while the worker is still
+    // decoding/resizing, used to show a skeleton placeholder instead of
+    // the blank pixel.
+    const [isLoading, setIsLoading] = React.useState(
+        mode === ThumbnailResizeMode.Local
+    )
 
     React.useEffect(() => {
         if (mode !== ThumbnailResizeMode.Local) return
         let cancelled = false
+        setIsLoading(true)
         const { width, height } = scaledSize(resize)
         resizeImageLocally(originalSrc, width, height)
             .then(url => {
-                if (!cancelled) setSrc(url)
+                if (!cancelled) {
+                    setSrc(url)
+                    setIsLoading(false)
+                }
             })
             .catch(() => {
-                if (!cancelled) setSrc(originalSrc)
+                if (!cancelled) {
+                    setSrc(originalSrc)
+                    setIsLoading(false)
+                }
             })
         return () => {
             cancelled = true
@@ -91,6 +113,11 @@ export const ProxiedImage: React.FunctionComponent<Props> = ({
             loading="lazy"
             decoding="async"
             {...rest}
+            className={
+                isLoading
+                    ? `${className || ""} img-skeleton`.trim()
+                    : className
+            }
             src={src}
             onError={handleError}
         />
