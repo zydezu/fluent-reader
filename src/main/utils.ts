@@ -142,6 +142,18 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     )
 
+    ipcMain.handle("fetch-image-bytes", async (_, url: string) => {
+        // Fetched from the main process so
+        // the renderer can build a Blob for canvas resizing without
+        // hitting cross-origin canvas-tainting restrictions.
+        const response = await fetch(url)
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`)
+        }
+        const buffer = await response.arrayBuffer()
+        return { bytes: new Uint8Array(buffer), type: response.headers.get("content-type") }
+    })
+
     ipcMain.handle("get-cache", async () => {
         return await session.defaultSession.getCacheSize()
     })
@@ -215,7 +227,7 @@ export function setUtilsListeners(manager: WindowManager) {
                             `new Promise(resolve => {
                         const dismiss = () => {
                             document.removeEventListener("mousedown", dismiss)
-                            document.removeEventListener("scroll", dismiss)                            
+                            document.removeEventListener("scroll", dismiss)
                             resolve()
                         }
                         document.addEventListener("mousedown", dismiss)

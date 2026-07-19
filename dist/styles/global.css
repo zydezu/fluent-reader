@@ -281,6 +281,25 @@ nav.item-on .btn-group .btn.system {
         transform: rotate(360deg);
     }
 }
+.img-skeleton {
+    background-color: var(--neutralLighter);
+    background-image: linear-gradient(
+        100deg,
+        transparent 30%,
+        var(--neutralQuaternaryAlt) 50%,
+        transparent 70%
+    );
+    background-size: 200% 100%;
+    animation: img-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes img-skeleton-shimmer {
+    0% {
+        background-position: 150% 0;
+    }
+    100% {
+        background-position: -50% 0;
+    }
+}
 .btn-group .btn.close:hover {
     background-color: #e81123;
     color: var(--whiteConstant) !important;

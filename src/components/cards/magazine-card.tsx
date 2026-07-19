@@ -4,6 +4,7 @@ import CardInfo from "./info"
 import Highlights from "./highlights"
 import { SourceTextDirection } from "../../scripts/models/source"
 import { ProxiedImage } from "../utils/proxied-image"
+import { MAGAZINE_CARD_THUMB_SIZE } from "./thumbnail-sizes"
 
 const className = (props: Card.Props) => {
     let cn = ["card", "magazine-card"]
@@ -21,7 +22,10 @@ const MagazineCard: React.FunctionComponent<Card.Props> = props => (
         data-is-focusable>
         {props.item.thumb ? (
             <div className="head">
-                <ProxiedImage src={props.item.thumb} />
+                <ProxiedImage
+                    src={props.item.thumb}
+                    resize={MAGAZINE_CARD_THUMB_SIZE}
+                />
             </div>
         ) : null}
         <div className="data">

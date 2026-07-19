@@ -6,7 +6,11 @@ import {
     calculateItemSize,
     getSearchEngineName,
 } from "../../scripts/utils"
-import { ThemeSettings, SearchEngines } from "../../schema-types"
+import {
+    ThemeSettings,
+    SearchEngines,
+    ThumbnailResizeMode,
+} from "../../schema-types"
 import {
     getThemeSettings,
     setThemeSettings,
@@ -26,6 +30,7 @@ import {
     ToggleBase,
 } from "@fluentui/react"
 import DangerButton from "../utils/danger-button"
+import { setResizeMode } from "../utils/proxied-image"
 
 type AppTabProps = {
     setLanguage: (option: string) => void
@@ -42,6 +47,7 @@ type AppTabState = {
     cacheSize: string
     deleteIndex: string
     iconStatus: boolean
+    thumbnailResizeMode: ThumbnailResizeMode
 }
 
 class AppTab extends React.Component<AppTabProps, AppTabState> {
@@ -54,7 +60,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             itemSize: null,
             cacheSize: null,
             deleteIndex: null,
-            iconStatus: window.settings.getIconStatus()
+            iconStatus: window.settings.getIconStatus(),
+            thumbnailResizeMode: window.settings.getThumbnailResizeMode(),
         }
         this.getItemSize()
         this.getCacheSize()
@@ -99,6 +106,19 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
     toggleIcon = () => {
         window.settings.toggleIconStatus()
         this.setState({ iconStatus: window.settings.getIconStatus() })
+    }
+
+    thumbnailResizeChoices = (): IChoiceGroupOption[] => [
+        { key: ThumbnailResizeMode.Off, text: "Off" },
+        { key: ThumbnailResizeMode.Proxy, text: "Via image proxy" },
+        { key: ThumbnailResizeMode.Local, text: "Locally" },
+    ]
+
+    onThumbnailResizeModeChange = (_, option: IChoiceGroupOption) => {
+        const mode = option.key as ThumbnailResizeMode
+        window.settings.setThumbnailResizeMode(mode)
+        setResizeMode(mode)
+        this.setState({ thumbnailResizeMode: mode })
     }
 
     searchEngineOptions = (): IDropdownOption[] =>
@@ -235,6 +255,21 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 onText="Enabled"
                 offText="Disabled"
                 onChanged={this.toggleIcon} />
+
+            <ChoiceGroup
+                label="Thumbnail resizing"
+                options={this.thumbnailResizeChoices()}
+                onChange={this.onThumbnailResizeModeChange}
+                selectedKey={this.state.thumbnailResizeMode}
+            />
+            <span className="settings-hint up">
+                Downscales article thumbnails before loading them, which can
+                reduce lag when scrolling through articles with very large
+                images. "Via image proxy" sends thumbnail URLs to the
+                third-party images.weserv.nl to resize them. "Locally" fetches
+                and resizes images on your device instead, using more CPU but
+                keeping thumbnail URLs private.
+            </span>
 
             <Stack horizontal verticalAlign="baseline">
                 <Stack.Item grow>

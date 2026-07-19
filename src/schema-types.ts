@@ -67,6 +67,12 @@ export interface ServiceConfigs {
     importGroups?: boolean
 }
 
+export const enum ThumbnailResizeMode {
+    Off = "off",
+    Proxy = "proxy",
+    Local = "local",
+}
+
 export const enum WindowStateListenerType {
     Maximized,
     Focused,
@@ -99,4 +105,5 @@ export type SchemaTypes = {
     listViewConfigs: ViewConfigs
     useNeDB: boolean
     customIcon: boolean
+    thumbnailResizeMode: ThumbnailResizeMode
 }

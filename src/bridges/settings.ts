@@ -5,6 +5,7 @@ import {
     SearchEngines,
     ServiceConfigs,
     ViewConfigs,
+    ThumbnailResizeMode,
 } from "../schema-types"
 import { ipcRenderer } from "electron"
 
@@ -28,6 +29,13 @@ const settingsBridge = {
     },
     toggleIconStatus: () => {
         ipcRenderer.send("toggle-icon-status")
+    },
+
+    getThumbnailResizeMode: (): ThumbnailResizeMode => {
+        return ipcRenderer.sendSync("get-thumbnail-resize-mode")
+    },
+    setThumbnailResizeMode: (mode: ThumbnailResizeMode) => {
+        ipcRenderer.invoke("set-thumbnail-resize-mode", mode)
     },
 
     getProxyStatus: (): boolean => {

@@ -4,6 +4,7 @@ import CardInfo from "./info"
 import Highlights from "./highlights"
 import { SourceTextDirection } from "../../scripts/models/source"
 import { ProxiedImage } from "../utils/proxied-image"
+import { DEFAULT_CARD_BG_SIZE, DEFAULT_CARD_HEAD_SIZE } from "./thumbnail-sizes"
 
 const className = (props: Card.Props) => {
     let cn = ["card", "default-card"]
@@ -20,11 +21,19 @@ const DefaultCard: React.FunctionComponent<Card.Props> = props => (
         data-iid={props.item._id}
         data-is-focusable>
         {props.item.thumb ? (
-            <ProxiedImage className="bg" src={props.item.thumb} />
+            <ProxiedImage
+                className="bg"
+                src={props.item.thumb}
+                resize={DEFAULT_CARD_BG_SIZE}
+            />
         ) : null}
         <div className="bg"></div>
         {props.item.thumb ? (
-            <ProxiedImage className="head" src={props.item.thumb} />
+            <ProxiedImage
+                className="head"
+                src={props.item.thumb}
+                resize={DEFAULT_CARD_HEAD_SIZE}
+            />
         ) : null}
         <CardInfo source={props.source} item={props.item} />
         <h3 className="title">

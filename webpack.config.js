@@ -50,6 +50,27 @@ module.exports = [
     },
     {
         mode: "production",
+        entry: "./src/components/utils/image-resize-worker.ts",
+        target: "webworker",
+        module: {
+            rules: [
+                {
+                    test: /\.ts$/,
+                    include: /src/,
+                    resolve: {
+                        extensions: [".ts", ".js"],
+                    },
+                    use: [{ loader: "ts-loader" }],
+                },
+            ],
+        },
+        output: {
+            path: __dirname + "/dist",
+            filename: "image-resize-worker.js",
+        },
+    },
+    {
+        mode: "production",
         entry: "./src/index.tsx",
         target: "web",
         devtool: "source-map",

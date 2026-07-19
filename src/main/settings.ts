@@ -8,6 +8,7 @@ import {
     SyncService,
     ServiceConfigs,
     ViewConfigs,
+    ThumbnailResizeMode,
 } from "../schema-types"
 import { ipcMain, session, nativeTheme, app } from "electron"
 import { WindowManager } from "./window"
@@ -37,6 +38,20 @@ function getIconStatus() {
 function toggleIconStatus() {
     store.set(ICON_STATUS_KEY, !getIconStatus())
 }
+
+const THUMBNAIL_RESIZE_MODE_KEY = "thumbnailResizeMode"
+function getThumbnailResizeMode() {
+    return store.get(THUMBNAIL_RESIZE_MODE_KEY, ThumbnailResizeMode.Proxy)
+}
+ipcMain.on("get-thumbnail-resize-mode", event => {
+    event.returnValue = getThumbnailResizeMode()
+})
+ipcMain.handle(
+    "set-thumbnail-resize-mode",
+    (_, mode: ThumbnailResizeMode) => {
+        store.set(THUMBNAIL_RESIZE_MODE_KEY, mode)
+    }
+)
 
 const PAC_STORE_KEY = "pac"
 const PAC_STATUS_KEY = "pacOn"

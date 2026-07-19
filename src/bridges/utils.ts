@@ -59,6 +59,12 @@ const utilsBridge = {
         return (await ipcRenderer.invoke("show-open-dialog", filters)) as string
     },
 
+    fetchImageBytes: async (
+        url: string
+    ): Promise<{ bytes: Uint8Array; type: string }> => {
+        return await ipcRenderer.invoke("fetch-image-bytes", url)
+    },
+
     getCacheSize: async (): Promise<number> => {
         return await ipcRenderer.invoke("get-cache")
     },
