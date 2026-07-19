@@ -21,6 +21,15 @@ export const setResizeMode = (mode: ThumbnailResizeMode) => {
     resizeMode = mode
 }
 
+// Whether a thumbnail that fails to load directly (dead link, CORS block,
+// timeout, etc.) should be retried through images.weserv.nl as a last
+// resort, rather than just staying broken.
+let errorFallbackProxy: boolean =
+    window.settings.getImageErrorFallbackProxy()
+export const setErrorFallbackProxy = (enabled: boolean) => {
+    errorFallbackProxy = enabled
+}
+
 interface Resize {
     width: number
     height: number
@@ -71,6 +80,29 @@ export const ProxiedImage: React.FunctionComponent<Props> = ({
     const [isLoading, setIsLoading] = React.useState(
         mode === ThumbnailResizeMode.Local
     )
+    // True once the browser has actually painted the current src, used to
+    // fade the image in instead of having it pop in abruptly. Reset to
+    // false whenever src is swapped out for something new (resize result,
+    // proxy fallback, etc.) so the replacement also fades in.
+    const [loaded, setLoaded] = React.useState(false)
+    const imgRef = React.useRef<HTMLImageElement>(null)
+
+    // <img>'s load event doesn't bubble, and for an already-cached image the
+    // browser can fire it before React finishes attaching the onLoad
+    // listener - missing it would leave the image stuck at opacity 0
+    // forever. Catch that by checking img.complete right after the src is
+    // committed to the DOM.
+    React.useLayoutEffect(() => {
+        const img = imgRef.current
+        if (
+            src !== BLANK_IMAGE &&
+            img &&
+            img.complete &&
+            img.naturalWidth > 0
+        ) {
+            setLoaded(true)
+        }
+    }, [src])
 
     React.useEffect(() => {
         if (mode !== ThumbnailResizeMode.Local) return
@@ -82,12 +114,14 @@ export const ProxiedImage: React.FunctionComponent<Props> = ({
                 if (!cancelled) {
                     setSrc(url)
                     setIsLoading(false)
+                    setLoaded(false)
                 }
             })
             .catch(() => {
                 if (!cancelled) {
                     setSrc(originalSrc)
                     setIsLoading(false)
+                    setLoaded(false)
                 }
             })
         return () => {
@@ -98,27 +132,42 @@ export const ProxiedImage: React.FunctionComponent<Props> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [originalSrc, mode])
 
+    const handleLoad = () => {
+        if (src !== BLANK_IMAGE) setLoaded(true)
+    }
+
     const handleError = () => {
         if (!usedProxy) {
-            setSrc(IMAGE_PROXY + encodeURIComponent(originalSrc))
-            setUsedProxy(true)
+            if (errorFallbackProxy) {
+                setSrc(IMAGE_PROXY + encodeURIComponent(originalSrc))
+                setUsedProxy(true)
+                setLoaded(false)
+            }
         } else if (mode !== ThumbnailResizeMode.Off) {
             // Resized source failed - fall back to the original image.
             setSrc(originalSrc)
+            setLoaded(false)
         }
     }
 
+    const classes = [
+        className,
+        isLoading ? "img-skeleton" : null,
+        !isLoading ? "img-fade-in" : null,
+        !isLoading && loaded ? "img-loaded" : null,
+    ]
+        .filter(Boolean)
+        .join(" ")
+
     return (
         <img
+            ref={imgRef}
             loading="lazy"
             decoding="async"
             {...rest}
-            className={
-                isLoading
-                    ? `${className || ""} img-skeleton`.trim()
-                    : className
-            }
+            className={classes}
             src={src}
+            onLoad={handleLoad}
             onError={handleError}
         />
     )

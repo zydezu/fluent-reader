@@ -53,6 +53,22 @@ ipcMain.handle(
     }
 )
 
+const IMAGE_ERROR_FALLBACK_PROXY_KEY = "imageErrorFallbackProxy"
+ipcMain.on("get-image-error-fallback-proxy", event => {
+    event.returnValue = store.get(IMAGE_ERROR_FALLBACK_PROXY_KEY, true)
+})
+ipcMain.handle("set-image-error-fallback-proxy", (_, flag: boolean) => {
+    store.set(IMAGE_ERROR_FALLBACK_PROXY_KEY, flag)
+})
+
+const AUTO_LOAD_MORE_KEY = "autoLoadMore"
+ipcMain.on("get-auto-load-more", event => {
+    event.returnValue = store.get(AUTO_LOAD_MORE_KEY, true)
+})
+ipcMain.handle("set-auto-load-more", (_, flag: boolean) => {
+    store.set(AUTO_LOAD_MORE_KEY, flag)
+})
+
 const PAC_STORE_KEY = "pac"
 const PAC_STATUS_KEY = "pacOn"
 function getProxyStatus() {

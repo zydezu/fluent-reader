@@ -301,6 +301,13 @@ nav.item-on .btn-group .btn.system {
         background-position: -50% 0;
     }
 }
+.img-fade-in {
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+}
+.img-fade-in.img-loaded {
+    opacity: 1;
+}
 .btn-group .btn.close:hover {
     background-color: #e81123;
     color: var(--whiteConstant) !important;

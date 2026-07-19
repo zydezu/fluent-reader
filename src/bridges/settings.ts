@@ -38,6 +38,20 @@ const settingsBridge = {
         ipcRenderer.invoke("set-thumbnail-resize-mode", mode)
     },
 
+    getImageErrorFallbackProxy: (): boolean => {
+        return ipcRenderer.sendSync("get-image-error-fallback-proxy")
+    },
+    setImageErrorFallbackProxy: (flag: boolean) => {
+        ipcRenderer.invoke("set-image-error-fallback-proxy", flag)
+    },
+
+    getAutoLoadMore: (): boolean => {
+        return ipcRenderer.sendSync("get-auto-load-more")
+    },
+    setAutoLoadMore: (flag: boolean) => {
+        ipcRenderer.invoke("set-auto-load-more", flag)
+    },
+
     getProxyStatus: (): boolean => {
         return ipcRenderer.sendSync("get-proxy-status")
     },

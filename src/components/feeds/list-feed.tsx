@@ -14,6 +14,7 @@ import ListCard from "../cards/list-card"
 import MagazineCard from "../cards/magazine-card"
 import CompactCard from "../cards/compact-card"
 import { Card } from "../cards/card"
+import { isAutoLoadMoreEnabled } from "../../scripts/settings"
 
 class ListFeed extends React.Component<FeedProps> {
     onRenderItem = (item: RSSItem) => {
@@ -70,6 +71,16 @@ class ListFeed extends React.Component<FeedProps> {
         }
     }
 
+    handleScroll = (event: React.UIEvent<HTMLElement>) => {
+        if (!isAutoLoadMoreEnabled()) return
+        const { feed, loadMore } = this.props
+        if (!feed.loaded || feed.loading || feed.allLoaded) return
+        const el = event.currentTarget
+        if (el.scrollTop + el.offsetHeight > el.scrollHeight - 400) {
+            loadMore(feed)
+        }
+    }
+
     render() {
         return (
             this.props.feed.loaded && (
@@ -79,6 +90,7 @@ class ListFeed extends React.Component<FeedProps> {
                     direction={FocusZoneDirection.vertical}
                     className={this.getClassName()}
                     shouldReceiveFocus={this.canFocusChild}
+                    onScroll={this.handleScroll}
                     data-is-scrollable>
                     <List
                         className={AnimationClassNames.slideUpIn10}

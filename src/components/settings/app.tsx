@@ -18,6 +18,8 @@ import {
     setAccentColor,
     getAppFont,
     setAppFont,
+    isAutoLoadMoreEnabled,
+    setAutoLoadMore,
     exportAll,
 } from "../../scripts/settings"
 import {
@@ -37,7 +39,7 @@ import {
     IColor,
 } from "@fluentui/react"
 import DangerButton from "../utils/danger-button"
-import { setResizeMode } from "../utils/proxied-image"
+import { setResizeMode, setErrorFallbackProxy } from "../utils/proxied-image"
 
 type AppTabProps = {
     setLanguage: (option: string) => void
@@ -60,6 +62,8 @@ type AppTabState = {
     appFont: string
     appFontFilter: string
     appFontPickerOpen: boolean
+    imageErrorFallbackProxy: boolean
+    autoLoadMore: boolean
 }
 
 class AppTab extends React.Component<AppTabProps, AppTabState> {
@@ -82,6 +86,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             appFont: getAppFont(),
             appFontFilter: "",
             appFontPickerOpen: false,
+            imageErrorFallbackProxy: window.settings.getImageErrorFallbackProxy(),
+            autoLoadMore: isAutoLoadMoreEnabled(),
         }
         this.getItemSize()
         this.getCacheSize()
@@ -139,6 +145,19 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
         window.settings.setThumbnailResizeMode(mode)
         setResizeMode(mode)
         this.setState({ thumbnailResizeMode: mode })
+    }
+
+    toggleImageErrorFallbackProxy = () => {
+        const next = !this.state.imageErrorFallbackProxy
+        window.settings.setImageErrorFallbackProxy(next)
+        setErrorFallbackProxy(next)
+        this.setState({ imageErrorFallbackProxy: next })
+    }
+
+    toggleAutoLoadMore = () => {
+        const next = !this.state.autoLoadMore
+        setAutoLoadMore(next)
+        this.setState({ autoLoadMore: next })
     }
 
     searchEngineOptions = (): IDropdownOption[] =>
@@ -377,6 +396,13 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </Stack.Item>
             </Stack>
 
+            <Toggle
+                label="Automatically load more articles when scrolling to the end"
+                checked={this.state.autoLoadMore}
+                onText="Enabled"
+                offText="Disabled"
+                onChanged={this.toggleAutoLoadMore} />
+
             <Label>{intl.get("searchEngine.name")}</Label>
             <Stack horizontal>
                 <Stack.Item>
@@ -396,6 +422,19 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 offText="Disabled"
                 onChanged={this.toggleIcon} />
 
+            <Toggle
+                label="Retry failed thumbnails through image proxy"
+                checked={this.state.imageErrorFallbackProxy}
+                onText="Enabled"
+                offText="Disabled"
+                onChanged={this.toggleImageErrorFallbackProxy} />
+            <span className="settings-hint up">
+                When a thumbnail fails to load directly (blocked by
+                bot protection, CORS, etc...), retry it through images.weserv.nl instead.
+                Disable this if you don't want failed
+                thumbnail URLs sent to a third party.
+            </span>
+
             <ChoiceGroup
                 label="Thumbnail resizing"
                 options={this.thumbnailResizeChoices()}
@@ -407,8 +446,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 reduce lag when scrolling through articles with very large
                 images. "Via image proxy" sends thumbnail URLs to the
                 third-party images.weserv.nl to resize them. "Locally" fetches
-                and resizes images on your device instead, using more CPU but
-                keeping thumbnail URLs private.
+                and resizes images on your device instead, this uses more CPU but
+                keeps thumbnail URLs private.
             </span>
 
             <Stack horizontal verticalAlign="baseline">

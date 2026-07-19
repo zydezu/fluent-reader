@@ -5,6 +5,7 @@ import DefaultCard from "../cards/default-card"
 import { PrimaryButton, FocusZone } from "office-ui-fabric-react"
 import { RSSItem } from "../../scripts/models/item"
 import { List, AnimationClassNames } from "@fluentui/react"
+import { isAutoLoadMoreEnabled } from "../../scripts/settings"
 
 class CardsFeed extends React.Component<FeedProps> {
     observer: ResizeObserver
@@ -76,6 +77,16 @@ class CardsFeed extends React.Component<FeedProps> {
         }
     }
 
+    handleScroll = (event: React.UIEvent<HTMLElement>) => {
+        if (!isAutoLoadMoreEnabled()) return
+        const { feed, loadMore } = this.props
+        if (!feed.loaded || feed.loading || feed.allLoaded) return
+        const el = event.currentTarget
+        if (el.scrollTop + el.offsetHeight > el.scrollHeight - 400) {
+            loadMore(feed)
+        }
+    }
+
     render() {
         return (
             this.props.feed.loaded && (
@@ -84,6 +95,7 @@ class CardsFeed extends React.Component<FeedProps> {
                     id="refocus"
                     className="cards-feed-container"
                     shouldReceiveFocus={this.canFocusChild}
+                    onScroll={this.handleScroll}
                     data-is-scrollable>
                     <List
                         className={AnimationClassNames.slideUpIn10}

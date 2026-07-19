@@ -108,4 +108,6 @@ export type SchemaTypes = {
     thumbnailResizeMode: ThumbnailResizeMode
     accentColor: string
     appFontFamily: string
+    imageErrorFallbackProxy: boolean
+    autoLoadMore: boolean
 }

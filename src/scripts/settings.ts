@@ -168,6 +168,17 @@ export function getAppFont(): string {
     return window.settings.getAppFont()
 }
 
+// Cached in-memory (rather than a sync IPC call per read) since this is
+// checked on every scroll event in the feed views.
+let autoLoadMoreEnabled: boolean = window.settings.getAutoLoadMore()
+export function setAutoLoadMore(enabled: boolean) {
+    window.settings.setAutoLoadMore(enabled)
+    autoLoadMoreEnabled = enabled
+}
+export function isAutoLoadMoreEnabled(): boolean {
+    return autoLoadMoreEnabled
+}
+
 currentAppFont = getAppFont()
 buildThemes(getAccentColor())
 applyAccentCssVars(getAccentColor())

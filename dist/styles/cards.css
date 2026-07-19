@@ -64,6 +64,15 @@
     transform: scale(1);
     cursor: pointer;
     overflow: hidden;
+    animation: card-fade-in 0.25s ease-out;
+}
+@keyframes card-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 .card:focus {
     outline: none;
@@ -142,6 +151,9 @@
 .default-card p,
 .default-card h3 {
     transition: transform ease-out 0.12s;
+}
+.default-card img.head.img-fade-in {
+    transition: transform ease-out 0.12s, opacity 0.25s ease-out;
 }
 .default-card.transform:hover img.head,
 .default-card.transform:hover p,
