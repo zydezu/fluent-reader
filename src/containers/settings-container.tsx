@@ -14,6 +14,7 @@ const mapStateToProps = createSelector([getApp], app => ({
         app.fetchingItems ||
         app.settings.saving,
     exitting: app.settings.saving,
+    sids: app.settings.sids,
 }))
 
 const mapDispatchToProps = dispatch => {

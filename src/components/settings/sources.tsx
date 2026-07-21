@@ -17,6 +17,10 @@ import {
     MessageBar,
     MessageBarType,
     Toggle,
+    Separator,
+    IconButton,
+    Spinner,
+    SpinnerSize,
 } from "@fluentui/react"
 import {
     SourceState,
@@ -27,6 +31,8 @@ import { SourceGroup } from "../../schema-types"
 import { urlTest } from "../../scripts/utils"
 import DangerButton from "../utils/danger-button"
 
+const UNGROUPED_KEY = -1
+
 type SourcesTabProps = {
     sources: SourceState
     groups: SourceGroup[]
@@ -35,8 +41,10 @@ type SourcesTabProps = {
     acknowledgeSIDs: () => void
     addSource: (url: string) => Promise<number>
     addToGroup: (groupIndex: number, sid: number) => void
+    removeFromGroup: (groupIndex: number, sids: number[]) => void
     updateSourceName: (source: RSSSource, name: string) => void
     updateSourceIcon: (source: RSSSource, iconUrl: string) => Promise<void>
+    updateSourceUrl: (source: RSSSource, url: string) => Promise<boolean>
     updateSourceOpenTarget: (
         source: RSSSource,
         target: SourceOpenTarget
@@ -47,20 +55,24 @@ type SourcesTabProps = {
     importOPML: () => void
     exportOPML: () => void
     toggleSourceHidden: (source: RSSSource) => void
+    onManageGroup: (groupIndex: number) => void
 }
 
 type SourcesTabState = {
-    [formName: string]: string
+    [formName: string]: any
 } & {
     selectedSource: RSSSource
     selectedSources: RSSSource[]
     newSourceGroup: number
+    bulkGroupIndex: number
+    urlSaving: boolean
 }
 
 const enum EditDropdownKeys {
     Name = "n",
     Icon = "i",
     Url = "u",
+    Group = "g",
 }
 
 class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
@@ -74,6 +86,8 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             newSourceGroup: null,
             selectedSource: null,
             selectedSources: null,
+            bulkGroupIndex: null,
+            urlSaving: false,
         }
         this.selection = new Selection({
             getKey: s => (s as RSSSource).sid,
@@ -87,19 +101,40 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                     selectedSources: count > 1 ? sources : null,
                     newSourceName: count === 1 ? sources[0].name : "",
                     newSourceIcon: count === 1 ? sources[0].iconurl || "" : "",
+                    newSourceUrl: count === 1 ? sources[0].url : "",
                     sourceEditOption: EditDropdownKeys.Name,
+                    bulkGroupIndex: null,
                 })
             },
         })
     }
 
     componentDidMount = () => {
+        this.selectSIDs()
+    }
+
+    componentDidUpdate = (prevProps: SourcesTabProps) => {
+        if (this.props.sids !== prevProps.sids) {
+            this.selectSIDs()
+        }
+    }
+
+    selectSIDs = () => {
         if (this.props.sids.length > 0) {
             for (let sid of this.props.sids) {
                 this.selection.setKeySelected(String(sid), true, false)
             }
             this.props.acknowledgeSIDs()
         }
+    }
+
+    groupOf = (sid: number): SourceGroup | null => {
+        return this.props.groups.find(g => g.sids.includes(sid)) || null
+    }
+
+    groupIndexOf = (sid: number): number => {
+        const group = this.groupOf(sid)
+        return group && group.isMultiple ? group.index : UNGROUPED_KEY
     }
 
     columns = (): IColumn[] => [
@@ -118,15 +153,39 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             key: "name",
             name: intl.get("name"),
             fieldName: "name",
-            minWidth: 200,
+            minWidth: 180,
             data: "string",
             isRowHeader: true,
+        },
+        {
+            key: "group",
+            name: intl.get("sources.group"),
+            minWidth: 110,
+            maxWidth: 150,
+            data: "string",
+            onRender: (s: RSSSource) => {
+                const group = this.groupOf(s.sid)
+                return group && group.isMultiple ? (
+                    <span
+                        className="settings-link"
+                        onClick={e => {
+                            e.stopPropagation()
+                            this.props.onManageGroup(group.index)
+                        }}>
+                        {group.name}
+                    </span>
+                ) : (
+                    <span style={{ color: "var(--neutralSecondary)" }}>
+                        {intl.get("sources.ungrouped")}
+                    </span>
+                )
+            },
         },
         {
             key: "url",
             name: "URL",
             fieldName: "url",
-            minWidth: 280,
+            minWidth: 220,
             data: "string",
         },
     ]
@@ -135,6 +194,11 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         this.props.groups
             .filter(g => g.isMultiple)
             .map(g => ({ key: g.index, text: g.name }))
+
+    groupOptionsWithUngrouped = (): IDropdownOption[] => [
+        { key: UNGROUPED_KEY, text: intl.get("sources.ungrouped") },
+        ...this.groupOptions(),
+    ]
 
     onNewSourceGroupChange = (_, option: IDropdownOption) => {
         this.setState({
@@ -146,6 +210,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         { key: EditDropdownKeys.Name, text: intl.get("name") },
         { key: EditDropdownKeys.Icon, text: intl.get("icon") },
         { key: EditDropdownKeys.Url, text: "URL" },
+        { key: EditDropdownKeys.Group, text: intl.get("sources.group") },
     ]
 
     onSourceEditOptionChange = (_, option: IDropdownOption) => {
@@ -213,6 +278,49 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         })
     }
 
+    saveSourceUrl = async () => {
+        const newUrl = this.state.newSourceUrl.trim()
+        this.setState({ urlSaving: true })
+        const success = await this.props.updateSourceUrl(
+            this.state.selectedSource,
+            newUrl
+        )
+        this.setState(state => ({
+            urlSaving: false,
+            selectedSource: success
+                ? ({ ...state.selectedSource, url: newUrl } as RSSSource)
+                : state.selectedSource,
+        }))
+    }
+
+    onSourceGroupChange = (_, option: IDropdownOption) => {
+        const sid = this.state.selectedSource.sid
+        const key = option.key as number
+        if (key === UNGROUPED_KEY) {
+            const currentIndex = this.groupIndexOf(sid)
+            if (currentIndex !== UNGROUPED_KEY) {
+                this.props.removeFromGroup(currentIndex, [sid])
+            }
+        } else {
+            this.props.addToGroup(key, sid)
+        }
+    }
+
+    moveSelectedToGroup = () => {
+        const key = this.state.bulkGroupIndex
+        for (let source of this.state.selectedSources) {
+            if (key === UNGROUPED_KEY) {
+                const currentIndex = this.groupIndexOf(source.sid)
+                if (currentIndex !== UNGROUPED_KEY) {
+                    this.props.removeFromGroup(currentIndex, [source.sid])
+                }
+            } else {
+                this.props.addToGroup(key, source.sid)
+            }
+        }
+        this.setState({ bulkGroupIndex: null })
+    }
+
     handleInputChange = event => {
         const name: string = event.target.name
         this.setState({ [name]: event.target.value })
@@ -278,6 +386,8 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                 </Stack.Item>
             </Stack>
 
+            <Separator />
+
             <form onSubmit={this.addSource}>
                 <Label htmlFor="newUrl">{intl.get("sources.add")}</Label>
                 <Stack horizontal>
@@ -315,6 +425,8 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                 </Stack>
             </form>
 
+            <Separator />
+
             <DetailsList
                 compact={Object.keys(this.props.sources).length >= 10}
                 items={Object.values(this.props.sources)}
@@ -326,14 +438,14 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             />
 
             {this.state.selectedSource && (
-                <>
+                <div className="settings-card">
                     {this.state.selectedSource.serviceRef && (
                         <MessageBar messageBarType={MessageBarType.info}>
                             {intl.get("sources.serviceManaged")}
                         </MessageBar>
                     )}
                     <Label>{intl.get("sources.selected")}</Label>
-                    <Stack horizontal>
+                    <Stack horizontal wrap verticalAlign="start">
                         <Stack.Item>
                             <Dropdown
                                 options={this.sourceEditOptions()}
@@ -408,23 +520,99 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                             <>
                                 <Stack.Item grow>
                                     <TextField
-                                        disabled
-                                        value={this.state.selectedSource.url}
+                                        disabled={
+                                            !!this.state.selectedSource
+                                                .serviceRef
+                                        }
+                                        onGetErrorMessage={v =>
+                                            urlTest(v.trim())
+                                                ? ""
+                                                : intl.get("sources.badUrl")
+                                        }
+                                        validateOnLoad={false}
+                                        value={this.state.newSourceUrl}
+                                        name="newSourceUrl"
+                                        onChange={this.handleInputChange}
                                     />
                                 </Stack.Item>
+                                {!this.state.selectedSource.serviceRef && (
+                                    <Stack.Item>
+                                        <DefaultButton
+                                            disabled={
+                                                this.state.urlSaving ||
+                                                !urlTest(
+                                                    this.state.newSourceUrl.trim()
+                                                ) ||
+                                                this.state.newSourceUrl.trim() ===
+                                                    this.state.selectedSource
+                                                        .url
+                                            }
+                                            onClick={this.saveSourceUrl}
+                                            text={intl.get("sources.changeUrl")}
+                                        />
+                                    </Stack.Item>
+                                )}
+                                {this.state.urlSaving && (
+                                    <Stack.Item
+                                        verticalFill
+                                        align="center">
+                                        <Spinner size={SpinnerSize.small} />
+                                    </Stack.Item>
+                                )}
                                 <Stack.Item>
-                                    <DefaultButton
+                                    <IconButton
+                                        iconProps={{ iconName: "Copy" }}
+                                        title={intl.get("context.copy")}
                                         onClick={() =>
                                             window.utils.writeClipboard(
                                                 this.state.selectedSource.url
                                             )
                                         }
-                                        text={intl.get("context.copy")}
+                                    />
+                                </Stack.Item>
+                            </>
+                        )}
+                        {this.state.sourceEditOption ===
+                            EditDropdownKeys.Group && (
+                            <>
+                                <Stack.Item grow>
+                                    <Dropdown
+                                        placeholder={intl.get(
+                                            "groups.chooseGroup"
+                                        )}
+                                        selectedKey={this.groupIndexOf(
+                                            this.state.selectedSource.sid
+                                        )}
+                                        options={this.groupOptionsWithUngrouped()}
+                                        onChange={this.onSourceGroupChange}
+                                    />
+                                </Stack.Item>
+                                <Stack.Item>
+                                    <DefaultButton
+                                        disabled={
+                                            this.groupIndexOf(
+                                                this.state.selectedSource.sid
+                                            ) === UNGROUPED_KEY
+                                        }
+                                        onClick={() =>
+                                            this.props.onManageGroup(
+                                                this.groupIndexOf(
+                                                    this.state.selectedSource
+                                                        .sid
+                                                )
+                                            )
+                                        }
+                                        text={intl.get("sources.manageGroup")}
                                     />
                                 </Stack.Item>
                             </>
                         )}
                     </Stack>
+                    {this.state.sourceEditOption === EditDropdownKeys.Url && (
+                        <span className="settings-hint up">
+                            {intl.get("sources.urlHint")}
+                        </span>
+                    )}
                     {!this.state.selectedSource.serviceRef && (
                         <>
                             <Label>{intl.get("sources.fetchFrequency")}</Label>
@@ -487,14 +675,40 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                             </Stack.Item>
                         </Stack>
                     )}
-                </>
+                </div>
             )}
             {this.state.selectedSources &&
                 (this.state.selectedSources.filter(s => s.serviceRef).length ===
                 0 ? (
-                    <>
+                    <div className="settings-card">
                         <Label>{intl.get("sources.selectedMulti")}</Label>
-                        <Stack horizontal>
+                        <Stack horizontal wrap verticalAlign="start">
+                            <Stack.Item>
+                                <Dropdown
+                                    placeholder={intl.get(
+                                        "groups.chooseGroup"
+                                    )}
+                                    selectedKey={this.state.bulkGroupIndex}
+                                    options={this.groupOptionsWithUngrouped()}
+                                    onChange={(_, option) =>
+                                        this.setState({
+                                            bulkGroupIndex: option
+                                                ? (option.key as number)
+                                                : null,
+                                        })
+                                    }
+                                    style={{ width: 200 }}
+                                />
+                            </Stack.Item>
+                            <Stack.Item>
+                                <DefaultButton
+                                    disabled={
+                                        this.state.bulkGroupIndex === null
+                                    }
+                                    onClick={this.moveSelectedToGroup}
+                                    text={intl.get("sources.moveToGroup")}
+                                />
+                            </Stack.Item>
                             <Stack.Item>
                                 <DangerButton
                                     onClick={() =>
@@ -505,13 +719,11 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                                     text={intl.get("sources.delete")}
                                 />
                             </Stack.Item>
-                            <Stack.Item>
-                                <span className="settings-hint">
-                                    {intl.get("sources.deleteWarning")}
-                                </span>
-                            </Stack.Item>
                         </Stack>
-                    </>
+                        <span className="settings-hint">
+                            {intl.get("sources.deleteWarning")}
+                        </span>
+                    </div>
                 ) : (
                     <MessageBar messageBarType={MessageBarType.info}>
                         {intl.get("sources.serviceManaged")}

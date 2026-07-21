@@ -1,11 +1,12 @@
 import { app } from "electron"
 import Store = require("electron-store")
 import { SchemaTypes } from "../schema-types"
+import { getAppVersion } from "./utils"
 
 export default function performUpdate(store: Store<SchemaTypes>) {
     let version = store.get("version", null)
     let useNeDB = store.get("useNeDB", undefined)
-    let currentVersion = app.getVersion()
+    let currentVersion = getAppVersion()
 
     if (useNeDB === undefined) {
         if (version !== null) {

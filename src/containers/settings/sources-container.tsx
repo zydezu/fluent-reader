@@ -16,8 +16,9 @@ import {
     importOPML,
     exportOPML,
     addSourceToGroup,
+    removeSourceFromGroup,
 } from "../../scripts/models/group"
-import { AppDispatch, validateFavicon } from "../../scripts/utils"
+import { AppDispatch, validateFavicon, parseRSS } from "../../scripts/utils"
 import { saveSettings, toggleSettings } from "../../scripts/models/app"
 import { SyncService } from "../../schema-types"
 
@@ -43,8 +44,29 @@ const mapDispatchToProps = (dispatch: AppDispatch) => {
         addSource: (url: string) => dispatch(addSource(url)),
         addToGroup: (groupIndex: number, sid: number) =>
             dispatch(addSourceToGroup(groupIndex, sid)),
+        removeFromGroup: (groupIndex: number, sids: number[]) =>
+            dispatch(removeSourceFromGroup(groupIndex, sids)),
         updateSourceName: (source: RSSSource, name: string) => {
             dispatch(updateSource({ ...source, name: name } as RSSSource))
+        },
+        updateSourceUrl: async (
+            source: RSSSource,
+            url: string
+        ): Promise<boolean> => {
+            dispatch(saveSettings())
+            let success = false
+            try {
+                await parseRSS(url)
+                await dispatch(updateSource({ ...source, url } as RSSSource))
+                success = true
+            } catch (e) {
+                window.utils.showErrorBox(
+                    intl.get("sources.badUrl"),
+                    e && e.code === 201 ? intl.get("sources.exist") : String(e)
+                )
+            }
+            dispatch(saveSettings())
+            return success
         },
         updateSourceIcon: async (source: RSSSource, iconUrl: string) => {
             dispatch(saveSettings())

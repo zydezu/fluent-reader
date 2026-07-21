@@ -13,6 +13,7 @@ import {
 import { SourceGroup, SyncService } from "../../schema-types"
 import { importGroups } from "../../scripts/models/service"
 import { AppDispatch } from "../../scripts/utils"
+import { toggleSettings } from "../../scripts/models/app"
 
 const getSources = (state: RootState) => state.sources
 const getGroups = (state: RootState) => state.groups
@@ -41,6 +42,7 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
     reorderGroups: (groups: SourceGroup[]) =>
         dispatch(reorderSourceGroups(groups)),
     importGroups: () => dispatch(importGroups()),
+    focusSource: (sid: number) => dispatch(toggleSettings(true, [sid])),
 })
 
 const GroupsTabContainer = connect(

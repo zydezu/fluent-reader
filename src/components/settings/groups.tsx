@@ -20,6 +20,7 @@ import {
     MessageBar,
     MessageBarType,
     MessageBarButton,
+    Separator,
 } from "@fluentui/react"
 import DangerButton from "../utils/danger-button"
 
@@ -27,6 +28,7 @@ type GroupsTabProps = {
     sources: SourceState
     groups: SourceGroup[]
     serviceOn: boolean
+    focusGroupIndex: number
     createGroup: (name: string) => void
     updateGroup: (group: SourceGroup) => void
     addToGroup: (groupIndex: number, sid: number) => void
@@ -34,6 +36,8 @@ type GroupsTabProps = {
     removeFromGroup: (groupIndex: number, sids: number[]) => void
     reorderGroups: (groups: SourceGroup[]) => void
     importGroups: () => Promise<void>
+    focusSource: (sid: number) => void
+    onFocusGroupHandled: () => void
 }
 
 type GroupsTabState = {
@@ -41,6 +45,7 @@ type GroupsTabState = {
     selectedGroup: SourceGroup
     selectedSources: RSSSource[]
     dropdownIndex: number
+    addSourceSid: number
     manageGroup: boolean
 }
 
@@ -62,6 +67,7 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
             selectedGroup: null,
             selectedSources: null,
             dropdownIndex: null,
+            addSourceSid: null,
             manageGroup: false,
         }
         this.groupDragDropEvents = this.getGroupDragDropEvents()
@@ -91,7 +97,60 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
         })
     }
 
+    componentDidMount = () => {
+        this.focusGroupIfNeeded()
+    }
+
+    componentDidUpdate = (prevProps: GroupsTabProps) => {
+        if (this.props.focusGroupIndex !== prevProps.focusGroupIndex) {
+            this.focusGroupIfNeeded()
+        }
+    }
+
+    focusGroupIfNeeded = () => {
+        const idx = this.props.focusGroupIndex
+        if (idx !== null && idx !== undefined) {
+            const group = this.props.groups.find(g => g.index === idx)
+            if (group && group.isMultiple) {
+                this.manageGroup(group)
+            }
+            this.props.onFocusGroupHandled()
+        }
+    }
+
     groupColumns = (): IColumn[] => [
+        {
+            key: "favicon",
+            name: intl.get("icon"),
+            isIconOnly: true,
+            iconName: "ImagePixel",
+            minWidth: 44,
+            maxWidth: 44,
+            onRender: (g: SourceGroup) =>
+                g.isMultiple ? (
+                    <span className="group-favicon-stack">
+                        {g.sids.slice(0, 4).map(
+                            sid =>
+                                this.props.sources[sid] &&
+                                this.props.sources[sid].iconurl && (
+                                    <img
+                                        key={sid}
+                                        src={this.props.sources[sid].iconurl}
+                                        className="favicon"
+                                    />
+                                )
+                        )}
+                    </span>
+                ) : (
+                    this.props.sources[g.sids[0]] &&
+                    this.props.sources[g.sids[0]].iconurl && (
+                        <img
+                            src={this.props.sources[g.sids[0]].iconurl}
+                            className="favicon"
+                        />
+                    )
+                ),
+        },
         {
             key: "type",
             name: intl.get("groups.type"),
@@ -236,6 +295,7 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
             this.setState({
                 selectedGroup: g,
                 editGroupName: g && g.isMultiple ? g.name : "",
+                addSourceSid: null,
                 manageGroup: true,
             })
         }
@@ -248,6 +308,13 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                 key: g.index,
                 text: g.name,
             }))
+
+    addableSourceOptions = (): IDropdownOption[] =>
+        this.state.selectedGroup
+            ? Object.values(this.props.sources)
+                  .filter(s => !this.state.selectedGroup.sids.includes(s.sid))
+                  .map(s => ({ key: s.sid, text: s.name }))
+            : []
 
     handleInputChange = event => {
         const name: string = event.target.name
@@ -281,12 +348,28 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
         )
     }
 
+    addExistingSource = () => {
+        this.props.addToGroup(
+            this.state.selectedGroup.index,
+            this.state.addSourceSid
+        )
+        this.setState({ addSourceSid: null })
+    }
+
     removeFromGroup = () => {
         this.props.removeFromGroup(
             this.state.selectedGroup.index,
             this.state.selectedSources.map(s => s.sid)
         )
         this.setState({ selectedSources: null })
+    }
+
+    editSelectedSource = () => {
+        this.props.focusSource(this.state.selectedSources[0].sid)
+    }
+
+    editSelectedTopLevelSource = () => {
+        this.props.focusSource(this.state.selectedGroup.sids[0])
     }
 
     deleteGroup = () => {
@@ -324,16 +407,26 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                                 this.setState({ manageGroup: false })
                             }
                         />
-                        {this.state.selectedSources != null && (
-                            <CommandBarButton
-                                text={intl.get("groups.deleteSource")}
-                                onClick={this.removeFromGroup}
-                                iconProps={{
-                                    iconName: "RemoveFromShoppingList",
-                                    style: { color: "#d13438" },
-                                }}
-                            />
-                        )}
+                        <Stack horizontal>
+                            {this.state.selectedSources != null &&
+                                this.state.selectedSources.length === 1 && (
+                                    <CommandBarButton
+                                        text={intl.get("sources.editSource")}
+                                        onClick={this.editSelectedSource}
+                                        iconProps={{ iconName: "Edit" }}
+                                    />
+                                )}
+                            {this.state.selectedSources != null && (
+                                <CommandBarButton
+                                    text={intl.get("groups.deleteSource")}
+                                    onClick={this.removeFromGroup}
+                                    iconProps={{
+                                        iconName: "RemoveFromShoppingList",
+                                        style: { color: "#d13438" },
+                                    }}
+                                />
+                            )}
+                        </Stack>
                     </Stack>
 
                     <MarqueeSelection
@@ -355,6 +448,41 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                     <span className="settings-hint">
                         {intl.get("groups.sourceHint")}
                     </span>
+
+                    <Separator />
+
+                    <Label>{intl.get("groups.addExisting")}</Label>
+                    <Stack horizontal wrap verticalAlign="start">
+                        <Stack.Item grow>
+                            <Dropdown
+                                placeholder={intl.get("groups.chooseSource")}
+                                selectedKey={this.state.addSourceSid}
+                                options={this.addableSourceOptions()}
+                                disabled={
+                                    this.addableSourceOptions().length === 0
+                                }
+                                onChange={(_, option) =>
+                                    this.setState({
+                                        addSourceSid: option
+                                            ? (option.key as number)
+                                            : null,
+                                    })
+                                }
+                            />
+                        </Stack.Item>
+                        <Stack.Item>
+                            <DefaultButton
+                                disabled={this.state.addSourceSid === null}
+                                onClick={this.addExistingSource}
+                                text={intl.get("add")}
+                            />
+                        </Stack.Item>
+                    </Stack>
+                    {this.addableSourceOptions().length === 0 && (
+                        <span className="settings-hint">
+                            {intl.get("groups.noOtherSources")}
+                        </span>
+                    )}
                 </>
             )}
             {!this.state.manageGroup || !this.state.selectedGroup ? (
@@ -404,6 +532,8 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                         </Stack>
                     </form>
 
+                    <Separator />
+
                     <DetailsList
                         compact={true}
                         items={this.props.groups}
@@ -417,11 +547,11 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
 
                     {this.state.selectedGroup ? (
                         this.state.selectedGroup.isMultiple ? (
-                            <>
+                            <div className="settings-card">
                                 <Label>
                                     {intl.get("groups.selectedGroup")}
                                 </Label>
-                                <Stack horizontal>
+                                <Stack horizontal wrap>
                                     <Stack.Item grow>
                                         <TextField
                                             onGetErrorMessage={v =>
@@ -449,6 +579,18 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                                         />
                                     </Stack.Item>
                                     <Stack.Item>
+                                        <DefaultButton
+                                            onClick={() =>
+                                                this.manageGroup(
+                                                    this.state.selectedGroup
+                                                )
+                                            }
+                                            text={intl.get(
+                                                "groups.manageSources"
+                                            )}
+                                        />
+                                    </Stack.Item>
+                                    <Stack.Item>
                                         <DangerButton
                                             key={this.state.selectedGroup.index}
                                             onClick={this.deleteGroup}
@@ -458,13 +600,13 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                                         />
                                     </Stack.Item>
                                 </Stack>
-                            </>
+                            </div>
                         ) : (
-                            <>
+                            <div className="settings-card">
                                 <Label>
                                     {intl.get("groups.selectedSource")}
                                 </Label>
-                                <Stack horizontal>
+                                <Stack horizontal wrap>
                                     <Stack.Item grow>
                                         <Dropdown
                                             placeholder={intl.get(
@@ -487,8 +629,18 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                                             text={intl.get("groups.addToGroup")}
                                         />
                                     </Stack.Item>
+                                    <Stack.Item>
+                                        <DefaultButton
+                                            onClick={
+                                                this.editSelectedTopLevelSource
+                                            }
+                                            text={intl.get(
+                                                "sources.editSource"
+                                            )}
+                                        />
+                                    </Stack.Item>
                                 </Stack>
-                            </>
+                            </div>
                         )
                     ) : (
                         <span className="settings-hint">

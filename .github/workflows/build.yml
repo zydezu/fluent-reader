@@ -85,8 +85,8 @@ jobs:
           name: Fluent-Reader_Windows_ARM64
           path: bin/win32/arm64/
 
-  Publish_and_Release:
-    name: Publish and Release (All Artifacts)
+  Tag_Build:
+    name: Tag Build (All Artifacts)
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -139,14 +139,10 @@ jobs:
         run: |
           echo "REPOSITORY_NAME=$(basename $GITHUB_REPOSITORY)" >> $GITHUB_ENV
           echo "DATETIME=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
-      - name: Create release
+      - name: Create tag
         if: steps.check.outputs.artifact_exists == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.REPOSITORY_NAME }}-${{ env.DATETIME }}
-          draft: false
-          prerelease: true
-          generate_release_notes: true
-          name: Nightly-${{ env.REPOSITORY_NAME }}-${{ env.DATETIME }}
-          files: |
-            releases/*
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag ${{ env.REPOSITORY_NAME }}-${{ env.DATETIME }}
+          git push origin ${{ env.REPOSITORY_NAME }}-${{ env.DATETIME }}

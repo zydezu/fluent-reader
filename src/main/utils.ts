@@ -4,6 +4,14 @@ import fs = require("fs")
 import { ImageCallbackTypes, TouchBarTexts } from "../schema-types"
 import { initMainTouchBar } from "./touchbar"
 import fontList = require("font-list")
+import { version as repoVersion } from "../../package.json"
+
+// The built dist/ output has no package.json of its own, so outside of a
+// packaged app.asar (which electron-builder generates one for),
+// app.getVersion() falls back to reporting Electron's own runtime version
+// instead of the app's version.
+export const getAppVersion = () =>
+    app.isPackaged ? app.getVersion() : repoVersion
 
 export function setUtilsListeners(manager: WindowManager) {
     async function openExternal(url: string, background = false) {
@@ -38,7 +46,7 @@ export function setUtilsListeners(manager: WindowManager) {
     })
 
     ipcMain.on("get-version", event => {
-        event.returnValue = app.getVersion()
+        event.returnValue = getAppVersion()
     })
 
     ipcMain.handle("open-external", (_, url: string, background: boolean) => {

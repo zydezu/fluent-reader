@@ -37,6 +37,7 @@ import {
     Callout,
     ColorPicker,
     IColor,
+    Separator,
 } from "@fluentui/react"
 import DangerButton from "../utils/danger-button"
 import { setResizeMode, setErrorFallbackProxy } from "../utils/proxied-image"
@@ -45,8 +46,14 @@ type AppTabProps = {
     setLanguage: (option: string) => void
     setFetchInterval: (interval: number) => void
     deleteArticles: (days: number) => Promise<void>
+    removeDuplicates: () => Promise<number>
     importAll: () => Promise<void>
 }
+
+// Separator's default padding (4px 0) is too tight to read as a section
+// break; Separator has no stable classname to target from CSS, so the
+// override has to go through its styles prop instead.
+const sectionSeparatorStyles = { root: { padding: "10px 0" } }
 
 type AppTabState = {
     pacStatus: boolean
@@ -55,6 +62,8 @@ type AppTabState = {
     itemSize: string
     cacheSize: string
     deleteIndex: string
+    duplicatesStatus: string
+    removingDuplicates: boolean
     iconStatus: boolean
     thumbnailResizeMode: ThumbnailResizeMode
     accentColor: string
@@ -79,6 +88,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             itemSize: null,
             cacheSize: null,
             deleteIndex: null,
+            duplicatesStatus: null,
+            removingDuplicates: false,
             iconStatus: window.settings.getIconStatus(),
             thumbnailResizeMode: window.settings.getThumbnailResizeMode(),
             accentColor: getAccentColor(),
@@ -193,6 +204,20 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             .then(() => this.getItemSize())
     }
 
+    removeDuplicates = () => {
+        this.setState({ removingDuplicates: true, duplicatesStatus: null })
+        this.props.removeDuplicates().then(count => {
+            this.setState({
+                removingDuplicates: false,
+                duplicatesStatus:
+                    count > 0
+                        ? intl.get("app.duplicatesRemoved", { count })
+                        : intl.get("app.noDuplicates"),
+            })
+            this.getItemSize()
+        })
+    }
+
     languageOptions = (): IDropdownOption[] => [
         { key: "default", text: intl.get("followSystem") },
         { key: "de", text: "Deutsch" },
@@ -295,12 +320,16 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </Stack.Item>
             </Stack>
 
+            <Separator styles={sectionSeparatorStyles} />
+
             <ChoiceGroup
                 label={intl.get("app.theme")}
                 options={this.themeChoices()}
                 onChange={this.onThemeChange}
                 selectedKey={this.state.themeSettings}
             />
+
+            <Separator styles={sectionSeparatorStyles} />
 
             <Label>Accent color</Label>
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
@@ -335,6 +364,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                     />
                 </Callout>
             )}
+
+            <Separator styles={sectionSeparatorStyles} />
 
             <Label>App font</Label>
             <Stack horizontal>
@@ -384,6 +415,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </Callout>
             )}
 
+            <Separator styles={sectionSeparatorStyles} />
+
             <Label>{intl.get("app.fetchInterval")}</Label>
             <Stack horizontal>
                 <Stack.Item>
@@ -396,12 +429,14 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </Stack.Item>
             </Stack>
 
+            <Separator styles={sectionSeparatorStyles} />
+
             <Toggle
                 label="Automatically load more articles when scrolling to the end"
                 checked={this.state.autoLoadMore}
-                onText="Enabled"
-                offText="Disabled"
                 onChanged={this.toggleAutoLoadMore} />
+
+            <Separator styles={sectionSeparatorStyles} />
 
             <Label>{intl.get("searchEngine.name")}</Label>
             <Stack horizontal>
@@ -415,18 +450,18 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </Stack.Item>
             </Stack>
 
+            <Separator styles={sectionSeparatorStyles} />
+
             <Toggle
                 label="Use custom icons when available"
                 checked={this.state.iconStatus}
-                onText="Enabled"
-                offText="Disabled"
                 onChanged={this.toggleIcon} />
+
+            <Separator styles={sectionSeparatorStyles} />
 
             <Toggle
                 label="Retry failed thumbnails through image proxy"
                 checked={this.state.imageErrorFallbackProxy}
-                onText="Enabled"
-                offText="Disabled"
                 onChanged={this.toggleImageErrorFallbackProxy} />
             <span className="settings-hint up">
                 When a thumbnail fails to load directly (blocked by
@@ -434,6 +469,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 Disable this if you don't want failed
                 thumbnail URLs sent to a third party.
             </span>
+
+            <Separator styles={sectionSeparatorStyles} />
 
             <ChoiceGroup
                 label="Thumbnail resizing"
@@ -449,6 +486,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 and resizes images on your device instead, this uses more CPU but
                 keeps thumbnail URLs private.
             </span>
+
+            <Separator styles={sectionSeparatorStyles} />
 
             <Stack horizontal verticalAlign="baseline">
                 <Stack.Item grow>
@@ -492,6 +531,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </form>
             )}
 
+            <Separator styles={sectionSeparatorStyles} />
+
             <Label>{intl.get("app.cleanup")}</Label>
             <Stack horizontal>
                 <Stack.Item grow>
@@ -518,6 +559,25 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                     ? intl.get("app.itemSize", { size: this.state.itemSize })
                     : intl.get("app.calculatingSize")}
             </span>
+
+            <Separator styles={sectionSeparatorStyles} />
+
+            <Stack horizontal>
+                <Stack.Item>
+                    <DefaultButton
+                        text={intl.get("app.removeDuplicates")}
+                        disabled={this.state.removingDuplicates}
+                        onClick={this.removeDuplicates}
+                    />
+                </Stack.Item>
+            </Stack>
+            <span className="settings-hint up">
+                {this.state.duplicatesStatus ??
+                    intl.get("app.duplicatesHint")}
+            </span>
+
+            <Separator styles={sectionSeparatorStyles} />
+
             <Stack horizontal>
                 <Stack.Item>
                     <DefaultButton
@@ -535,6 +595,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                     ? intl.get("app.cacheSize", { size: this.state.cacheSize })
                     : intl.get("app.calculatingSize")}
             </span>
+
+            <Separator styles={sectionSeparatorStyles} />
 
             <Label>{intl.get("app.data")}</Label>
             <Stack horizontal>

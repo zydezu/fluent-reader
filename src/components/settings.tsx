@@ -15,12 +15,31 @@ type SettingsProps = {
     display: boolean
     blocked: boolean
     exitting: boolean
+    sids: number[]
     close: () => void
 }
 
-class Settings extends React.Component<SettingsProps> {
+type SettingsState = {
+    activeTab: string
+    focusGroupIndex: number
+}
+
+const enum SettingsTabKeys {
+    Sources = "sources",
+    Grouping = "grouping",
+    Rules = "rules",
+    Service = "service",
+    App = "app",
+    About = "about",
+}
+
+class Settings extends React.Component<SettingsProps, SettingsState> {
     constructor(props) {
         super(props)
+        this.state = {
+            activeTab: SettingsTabKeys.Sources,
+            focusGroupIndex: null,
+        }
     }
 
     onKeyDown = (event: KeyboardEvent) => {
@@ -33,11 +52,33 @@ class Settings extends React.Component<SettingsProps> {
                 if (window.utils.platform === "darwin")
                     window.utils.destroyTouchBar()
                 document.body.addEventListener("keydown", this.onKeyDown)
+                this.setState({ activeTab: SettingsTabKeys.Sources })
             } else {
                 if (window.utils.platform === "darwin") initTouchBarWithTexts()
                 document.body.removeEventListener("keydown", this.onKeyDown)
             }
         }
+        if (
+            this.props.sids !== prevProps.sids &&
+            this.props.sids.length > 0
+        ) {
+            this.setState({ activeTab: SettingsTabKeys.Sources })
+        }
+    }
+
+    onTabClick = (item: { props: { itemKey?: string } }) => {
+        this.setState({ activeTab: item.props.itemKey })
+    }
+
+    goToGroup = (groupIndex: number) => {
+        this.setState({
+            activeTab: SettingsTabKeys.Grouping,
+            focusGroupIndex: groupIndex,
+        })
+    }
+
+    clearGroupFocus = () => {
+        this.setState({ focusGroupIndex: null })
     }
 
     render = () =>
@@ -70,24 +111,34 @@ class Settings extends React.Component<SettingsProps> {
                             />
                         </FocusTrapZone>
                     )}
-                    <Pivot>
+                    <Pivot
+                        selectedKey={this.state.activeTab}
+                        onLinkClick={this.onTabClick}>
                         <PivotItem
+                            itemKey={SettingsTabKeys.Sources}
                             headerText={intl.get("settings.sources")}
                             itemIcon="Source">
                             <h2 className="settings-header">
                                 {intl.get("settings.sources")}
                             </h2>
-                            <SourcesTabContainer />
+                            <SourcesTabContainer
+                                onManageGroup={this.goToGroup}
+                            />
                         </PivotItem>
                         <PivotItem
+                            itemKey={SettingsTabKeys.Grouping}
                             headerText={intl.get("settings.grouping")}
                             itemIcon="GroupList">
                             <h2 className="settings-header">
                                 {intl.get("settings.grouping")}
                             </h2>
-                            <GroupsTabContainer />
+                            <GroupsTabContainer
+                                focusGroupIndex={this.state.focusGroupIndex}
+                                onFocusGroupHandled={this.clearGroupFocus}
+                            />
                         </PivotItem>
                         <PivotItem
+                            itemKey={SettingsTabKeys.Rules}
                             headerText={intl.get("settings.rules")}
                             itemIcon="FilterSettings">
                             <h2 className="settings-header">
@@ -96,6 +147,7 @@ class Settings extends React.Component<SettingsProps> {
                             <RulesTabContainer />
                         </PivotItem>
                         <PivotItem
+                            itemKey={SettingsTabKeys.Service}
                             headerText={intl.get("settings.service")}
                             itemIcon="CloudImportExport">
                             <h2 className="settings-header">
@@ -104,6 +156,7 @@ class Settings extends React.Component<SettingsProps> {
                             <ServiceTabContainer />
                         </PivotItem>
                         <PivotItem
+                            itemKey={SettingsTabKeys.App}
                             headerText={intl.get("settings.app")}
                             itemIcon="Settings">
                             <h2 className="settings-header">
@@ -112,6 +165,7 @@ class Settings extends React.Component<SettingsProps> {
                             <AppTabContainer />
                         </PivotItem>
                         <PivotItem
+                            itemKey={SettingsTabKeys.About}
                             headerText={intl.get("settings.about")}
                             itemIcon="Info">
                             <h2 className="settings-header">
