@@ -4,9 +4,8 @@
 <h3 align="center">Fluent Reader</h3>
 <p align="center">A modern desktop RSS reader</p>
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/yang991178/fluent-reader?label=version" />
-  <img src="https://img.shields.io/github/downloads/yang991178/fluent-reader/total" />
-  <img src="https://github.com/yang991178/fluent-reader/workflows/CI%2FCD%20Release/badge.svg" />
+  <img src="https://img.shields.io/github/v/release/zydezu/fluent-reader?label=version" />
+  <img src="https://github.com/zydezu/fluent-reader/workflows/CI%2FCD%20Release/badge.svg" />
 </p>
 <hr />
 
