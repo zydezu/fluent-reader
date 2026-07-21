@@ -48,7 +48,9 @@ export class RSSItem {
             if (content && typeof content !== "string") delete item[field]
         }
         this.source = source.sid
-        this.title = item.title || intl.get("article.untitled")
+        this.title = item.title
+            ? htmlDecode(item.title)
+            : intl.get("article.untitled")
         this.link = item.link || ""
         this.fetchedDate = new Date()
         this.date = new Date(item.isoDate ?? item.pubDate ?? this.fetchedDate)

@@ -71,4 +71,5 @@ linux:
   icon: icons
   category: Network;Feed;
   desktop:
-    StartupWMClass: fluent-reader
+    entry:
+      StartupWMClass: fluent-reader

@@ -4,6 +4,7 @@ import lf from "lovefield"
 import {
     fetchFavicon,
     fetchYTChannelIcon,
+    htmlDecode,
     ActionStatus,
     AppThunk,
     parseRSS,
@@ -64,7 +65,7 @@ export class RSSSource {
         let feed = await parseRSS(source.url)
         source.originUrl = feed.link
         if (!source.name) {
-            if (feed.title) source.name = feed.title.trim()
+            if (feed.title) source.name = htmlDecode(feed.title.trim())
             source.name = source.name || intl.get("sources.untitled")
         }
         return feed

@@ -11,6 +11,12 @@ if (!process.mas) {
     }
 }
 
+// Native Wayland + Vulkan crashes the GPU process on some Linux setups;
+// "auto" lets Chromium fall back to XWayland when that combination isn't usable.
+if (process.platform === "linux") {
+    app.commandLine.appendSwitch("ozone-platform-hint", "auto")
+}
+
 if (!app.isPackaged) app.setAppUserModelId(process.execPath)
 else if (process.platform === "win32")
     app.setAppUserModelId("me.hyliu.fluentreader")
