@@ -10,6 +10,7 @@ import {
     ThemeSettings,
     SearchEngines,
     ThumbnailResizeMode,
+    ProxyImageFormat,
 } from "../../schema-types"
 import {
     getThemeSettings,
@@ -40,7 +41,12 @@ import {
     Separator,
 } from "@fluentui/react"
 import DangerButton from "../utils/danger-button"
-import { setResizeMode, setErrorFallbackProxy } from "../utils/proxied-image"
+import {
+    setResizeMode,
+    setErrorFallbackProxy,
+    setProxyFormat,
+} from "../utils/proxied-image"
+import { setBlurBackground } from "../cards/default-card"
 
 type AppTabProps = {
     setLanguage: (option: string) => void
@@ -73,6 +79,8 @@ type AppTabState = {
     appFontPickerOpen: boolean
     imageErrorFallbackProxy: boolean
     autoLoadMore: boolean
+    cardBlurBackground: boolean
+    thumbnailProxyFormat: ProxyImageFormat
 }
 
 class AppTab extends React.Component<AppTabProps, AppTabState> {
@@ -99,6 +107,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             appFontPickerOpen: false,
             imageErrorFallbackProxy: window.settings.getImageErrorFallbackProxy(),
             autoLoadMore: isAutoLoadMoreEnabled(),
+            cardBlurBackground: window.settings.getCardBlurBackground(),
+            thumbnailProxyFormat: window.settings.getThumbnailProxyFormat(),
         }
         this.getItemSize()
         this.getCacheSize()
@@ -163,6 +173,25 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
         window.settings.setImageErrorFallbackProxy(next)
         setErrorFallbackProxy(next)
         this.setState({ imageErrorFallbackProxy: next })
+    }
+
+    toggleCardBlurBackground = () => {
+        const next = !this.state.cardBlurBackground
+        window.settings.setCardBlurBackground(next)
+        setBlurBackground(next)
+        this.setState({ cardBlurBackground: next })
+    }
+
+    thumbnailProxyFormatChoices = (): IChoiceGroupOption[] => [
+        { key: ProxyImageFormat.Original, text: "Original format" },
+        { key: ProxyImageFormat.WebP, text: "WebP" },
+    ]
+
+    onThumbnailProxyFormatChange = (_, option: IChoiceGroupOption) => {
+        const format = option.key as ProxyImageFormat
+        window.settings.setThumbnailProxyFormat(format)
+        setProxyFormat(format)
+        this.setState({ thumbnailProxyFormat: format })
     }
 
     toggleAutoLoadMore = () => {
@@ -320,16 +349,12 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </Stack.Item>
             </Stack>
 
-            <Separator styles={sectionSeparatorStyles} />
-
             <ChoiceGroup
                 label={intl.get("app.theme")}
                 options={this.themeChoices()}
                 onChange={this.onThemeChange}
                 selectedKey={this.state.themeSettings}
             />
-
-            <Separator styles={sectionSeparatorStyles} />
 
             <Label>Accent color</Label>
             <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
@@ -364,8 +389,6 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                     />
                 </Callout>
             )}
-
-            <Separator styles={sectionSeparatorStyles} />
 
             <Label>App font</Label>
             <Stack horizontal>
@@ -429,14 +452,10 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 </Stack.Item>
             </Stack>
 
-            <Separator styles={sectionSeparatorStyles} />
-
             <Toggle
                 label="Automatically load more articles when scrolling to the end"
                 checked={this.state.autoLoadMore}
                 onChanged={this.toggleAutoLoadMore} />
-
-            <Separator styles={sectionSeparatorStyles} />
 
             <Label>{intl.get("searchEngine.name")}</Label>
             <Stack horizontal>
@@ -457,8 +476,6 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 checked={this.state.iconStatus}
                 onChanged={this.toggleIcon} />
 
-            <Separator styles={sectionSeparatorStyles} />
-
             <Toggle
                 label="Retry failed thumbnails through image proxy"
                 checked={this.state.imageErrorFallbackProxy}
@@ -469,8 +486,6 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 Disable this if you don't want failed
                 thumbnail URLs sent to a third party.
             </span>
-
-            <Separator styles={sectionSeparatorStyles} />
 
             <ChoiceGroup
                 label="Thumbnail resizing"
@@ -485,6 +500,31 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 third-party images.weserv.nl to resize them. "Locally" fetches
                 and resizes images on your device instead, this uses more CPU but
                 keeps thumbnail URLs private.
+            </span>
+
+            {this.state.thumbnailResizeMode === ThumbnailResizeMode.Proxy && (
+                <ChoiceGroup
+                    label="Proxy output format"
+                    options={this.thumbnailProxyFormatChoices()}
+                    onChange={this.onThumbnailProxyFormatChange}
+                    selectedKey={this.state.thumbnailProxyFormat}
+                />
+            )}
+            {this.state.thumbnailResizeMode === ThumbnailResizeMode.Proxy && (
+              <span className="settings-hint up">
+                Whether to leave proxied/rescaled thumbnails as it's original format,
+                or to convert them to WebP to save bandwidth and space.
+              </span>
+            )}
+
+
+            <Toggle
+                label="Blurred background on cards"
+                checked={this.state.cardBlurBackground}
+                onChanged={this.toggleCardBlurBackground} />
+            <span className="settings-hint up">
+              Shows a blurred effect behind card in the Cards view.
+              Disable for a plain, blank background instead.
             </span>
 
             <Separator styles={sectionSeparatorStyles} />
@@ -560,8 +600,6 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                     : intl.get("app.calculatingSize")}
             </span>
 
-            <Separator styles={sectionSeparatorStyles} />
-
             <Stack horizontal>
                 <Stack.Item>
                     <DefaultButton
@@ -575,8 +613,6 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                 {this.state.duplicatesStatus ??
                     intl.get("app.duplicatesHint")}
             </span>
-
-            <Separator styles={sectionSeparatorStyles} />
 
             <Stack horizontal>
                 <Stack.Item>
@@ -595,8 +631,6 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
                     ? intl.get("app.cacheSize", { size: this.state.cacheSize })
                     : intl.get("app.calculatingSize")}
             </span>
-
-            <Separator styles={sectionSeparatorStyles} />
 
             <Label>{intl.get("app.data")}</Label>
             <Stack horizontal>

@@ -535,6 +535,17 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                                         onChange={this.handleInputChange}
                                     />
                                 </Stack.Item>
+                                <Stack.Item>
+                                    <IconButton
+                                        iconProps={{ iconName: "Copy" }}
+                                        title={intl.get("context.copy")}
+                                        onClick={() =>
+                                            window.utils.writeClipboard(
+                                                this.state.selectedSource.url
+                                            )
+                                        }
+                                    />
+                                </Stack.Item>
                                 {!this.state.selectedSource.serviceRef && (
                                     <Stack.Item>
                                         <DefaultButton
@@ -559,17 +570,6 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                                         <Spinner size={SpinnerSize.small} />
                                     </Stack.Item>
                                 )}
-                                <Stack.Item>
-                                    <IconButton
-                                        iconProps={{ iconName: "Copy" }}
-                                        title={intl.get("context.copy")}
-                                        onClick={() =>
-                                            window.utils.writeClipboard(
-                                                this.state.selectedSource.url
-                                            )
-                                        }
-                                    />
-                                </Stack.Item>
                             </>
                         )}
                         {this.state.sourceEditOption ===

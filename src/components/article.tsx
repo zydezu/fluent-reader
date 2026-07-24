@@ -461,7 +461,7 @@ class Article extends React.Component<ArticleProps, ArticleState> {
                 <Stack horizontal horizontalAlign="end" style={{ width: 112 }}>
                     <CommandBarButton
                         title={intl.get("close")}
-                        iconProps={{ iconName: "BackToWindow" }}
+                        iconProps={{ iconName: "Cancel" }}
                         onClick={this.props.dismiss}
                     />
                 </Stack>

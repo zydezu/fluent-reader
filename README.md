@@ -30,18 +30,15 @@ You can [get Fluent Reader from GitHub releases](https://github.com/yang991178/f
 - Hide, mark as read, or star articles automatically as they arrive with regular expression rules.
 - Fetch articles in the background and send push notifications.
 
-Support for other RSS services are [under fundraising](https://github.com/yang991178/fluent-reader/issues/23). 
-
 ## Development
 
 ### Contribute
 
-Help make Fluent Reader better by reporting bugs or opening feature requests through [GitHub issues](https://github.com/yang991178/fluent-reader/issues). 
+Help make Fluent Reader better by reporting bugs or opening feature requests through [GitHub issues](https://github.com/zydezu/fluent-reader/issues). 
 
-You can also help internationalize the app by providing [translations into additional languages](https://github.com/yang991178/fluent-reader/tree/master/src/scripts/i18n). 
+You can also help internationalize the app by providing [translations into additional languages](https://github.com/zydezu/fluent-reader/tree/master/src/scripts/i18n). 
+
 Refer to the repo of [react-intl-universal](https://github.com/alibaba/react-intl-universal) to get started on internationalization. 
-
-If you enjoy using this app, consider supporting its development by donating through [GitHub Sponsors](https://github.com/sponsors/yang991178), [Paypal](https://www.paypal.me/yang991178), or [Alipay](https://hyliu.me/fluent-reader/imgs/alipay.jpg).
 
 ### Build from source
 ```bash

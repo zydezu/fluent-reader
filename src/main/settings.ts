@@ -9,6 +9,7 @@ import {
     ServiceConfigs,
     ViewConfigs,
     ThumbnailResizeMode,
+    ProxyImageFormat,
 } from "../schema-types"
 import { ipcMain, session, nativeTheme, app } from "electron"
 import { WindowManager } from "./window"
@@ -59,6 +60,25 @@ ipcMain.on("get-image-error-fallback-proxy", event => {
 })
 ipcMain.handle("set-image-error-fallback-proxy", (_, flag: boolean) => {
     store.set(IMAGE_ERROR_FALLBACK_PROXY_KEY, flag)
+})
+
+const CARD_BLUR_BACKGROUND_KEY = "cardBlurBackground"
+ipcMain.on("get-card-blur-background", event => {
+    event.returnValue = store.get(CARD_BLUR_BACKGROUND_KEY, true)
+})
+ipcMain.handle("set-card-blur-background", (_, flag: boolean) => {
+    store.set(CARD_BLUR_BACKGROUND_KEY, flag)
+})
+
+const THUMBNAIL_PROXY_FORMAT_KEY = "thumbnailProxyFormat"
+ipcMain.on("get-thumbnail-proxy-format", event => {
+    event.returnValue = store.get(
+        THUMBNAIL_PROXY_FORMAT_KEY,
+        ProxyImageFormat.WebP
+    )
+})
+ipcMain.handle("set-thumbnail-proxy-format", (_, format: ProxyImageFormat) => {
+    store.set(THUMBNAIL_PROXY_FORMAT_KEY, format)
 })
 
 const AUTO_LOAD_MORE_KEY = "autoLoadMore"

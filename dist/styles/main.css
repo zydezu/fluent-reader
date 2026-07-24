@@ -111,14 +111,21 @@ body.darwin .menu .btn-group {
     overflow: hidden;
 }
 .settings-container .settings {
-    margin: 64px auto 0;
+    position: relative;
+    margin: 32px auto 0;
     width: 920px;
-    height: calc(100% - 64px);
+    height: calc(100% - 50px);
     background-color: var(--white);
     box-shadow: 0 6.4px 14.4px 0 rgba(0, 0, 0, 0.132),
         0 1.2px 3.6px 0 rgba(0, 0, 0, 0.108);
     border-radius: 5px;
     overflow: hidden;
+}
+.settings-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
 }
 div[role="toolbar"] {
     display: flex;
@@ -138,7 +145,7 @@ div[role="toolbar"] {
     white-space: normal;
 }
 .settings .ms-Pivot-link,
-.settings .is-selected {
+.settings .ms-Pivot-link.is-selected {
     display: flex !important;
     align-items: center;
     width: 100%;
@@ -152,10 +159,10 @@ div[role="toolbar"] {
     box-sizing: border-box;
 }
 .settings .ms-Pivot-link:before,
-.settings .is-selected:before {
+.settings .ms-Pivot-link.is-selected:before {
     content: none !important;
 }
-.settings .is-selected {
+.settings .ms-Pivot-link.is-selected {
     background-color: var(--neutralQuaternaryAlt);
     border-left-color: var(--primary);
 }

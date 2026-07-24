@@ -1,9 +1,14 @@
 import * as React from "react"
 import intl from "react-intl-universal"
-import { Icon } from "@fluentui/react/lib/Icon"
 import { AnimationClassNames } from "@fluentui/react/lib/Styling"
 import AboutTab from "./settings/about"
-import { Pivot, PivotItem, Spinner, FocusTrapZone } from "@fluentui/react"
+import {
+    Pivot,
+    PivotItem,
+    Spinner,
+    FocusTrapZone,
+    CommandBarButton,
+} from "@fluentui/react"
 import SourcesTabContainer from "../containers/settings/sources-container"
 import GroupsTabContainer from "../containers/settings/groups-container"
 import AppTabContainer from "../containers/settings/app-container"
@@ -83,24 +88,19 @@ class Settings extends React.Component<SettingsProps, SettingsState> {
 
     render = () =>
         this.props.display && (
-            <div className="settings-container">
+            <div
+                className="settings-container"
+                onClick={this.props.close}>
                 <div
-                    className="btn-group"
-                    style={{
-                        position: "absolute",
-                        top: 70,
-                        left: "calc(50% - 524px)",
-                    }}>
-                    <a
-                        className={
-                            "btn" + (this.props.exitting ? " disabled" : "")
-                        }
+                    className={"settings " + AnimationClassNames.slideUpIn20}
+                    onClick={e => e.stopPropagation()}>
+                    <CommandBarButton
+                        className="settings-close"
+                        disabled={this.props.exitting}
                         title={intl.get("settings.exit")}
-                        onClick={this.props.close}>
-                        <Icon iconName="Back" />
-                    </a>
-                </div>
-                <div className={"settings " + AnimationClassNames.slideUpIn20}>
+                        iconProps={{ iconName: "Cancel" }}
+                        onClick={this.props.close}
+                    />
                     {this.props.blocked && (
                         <FocusTrapZone
                             isClickableOutsideFocusTrap={true}

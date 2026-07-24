@@ -73,6 +73,11 @@ export const enum ThumbnailResizeMode {
     Local = "local",
 }
 
+export const enum ProxyImageFormat {
+    Original = "original",
+    WebP = "webp",
+}
+
 export const enum WindowStateListenerType {
     Maximized,
     Focused,
@@ -110,4 +115,6 @@ export type SchemaTypes = {
     appFontFamily: string
     imageErrorFallbackProxy: boolean
     autoLoadMore: boolean
+    cardBlurBackground: boolean
+    thumbnailProxyFormat: ProxyImageFormat
 }

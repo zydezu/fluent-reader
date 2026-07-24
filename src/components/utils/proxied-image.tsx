@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ThumbnailResizeMode } from "../../schema-types"
+import { ThumbnailResizeMode, ProxyImageFormat } from "../../schema-types"
 import { resizeImageLocally } from "./local-resize"
 
 const IMAGE_PROXY = "https://images.weserv.nl/?url="
@@ -30,6 +30,13 @@ export const setErrorFallbackProxy = (enabled: boolean) => {
     errorFallbackProxy = enabled
 }
 
+// Which format resized thumbnails should be requested as from the proxy -
+// its default (source) format, or WebP.
+let proxyFormat: ProxyImageFormat = window.settings.getThumbnailProxyFormat()
+export const setProxyFormat = (format: ProxyImageFormat) => {
+    proxyFormat = format
+}
+
 interface Resize {
     width: number
     height: number
@@ -53,9 +60,13 @@ const scaledSize = (resize: Resize) => {
 
 const buildProxySrc = (src: string, resize: Resize) => {
     const { width, height } = scaledSize(resize)
+    const format =
+        proxyFormat === ProxyImageFormat.Original
+            ? ""
+            : `&output=${proxyFormat}`
     return `${IMAGE_PROXY}${encodeURIComponent(
         src
-    )}&w=${width}&h=${height}&fit=cover&q=75`
+    )}&w=${width}&h=${height}&fit=cover${format}`
 }
 
 export const ProxiedImage: React.FunctionComponent<Props> = ({

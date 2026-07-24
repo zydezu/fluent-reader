@@ -134,10 +134,11 @@
 }
 .default-card img.bg {
     object-fit: cover;
+    transform: scale(1.15);
     filter: var(--blur);
 }
 .default-card div.bg {
-    background-color: #fffb;
+    background-color: color-mix(in srgb, var(--white) 70%, transparent);
 }
 .default-card img.head {
     display: block;

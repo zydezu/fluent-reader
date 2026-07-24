@@ -6,6 +6,7 @@ import {
     ServiceConfigs,
     ViewConfigs,
     ThumbnailResizeMode,
+    ProxyImageFormat,
 } from "../schema-types"
 import { ipcRenderer } from "electron"
 
@@ -43,6 +44,20 @@ const settingsBridge = {
     },
     setImageErrorFallbackProxy: (flag: boolean) => {
         ipcRenderer.invoke("set-image-error-fallback-proxy", flag)
+    },
+
+    getCardBlurBackground: (): boolean => {
+        return ipcRenderer.sendSync("get-card-blur-background")
+    },
+    setCardBlurBackground: (flag: boolean) => {
+        ipcRenderer.invoke("set-card-blur-background", flag)
+    },
+
+    getThumbnailProxyFormat: (): ProxyImageFormat => {
+        return ipcRenderer.sendSync("get-thumbnail-proxy-format")
+    },
+    setThumbnailProxyFormat: (format: ProxyImageFormat) => {
+        ipcRenderer.invoke("set-thumbnail-proxy-format", format)
     },
 
     getAutoLoadMore: (): boolean => {
