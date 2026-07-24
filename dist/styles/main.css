@@ -127,6 +127,12 @@ body.darwin .menu .btn-group {
     right: 8px;
     z-index: 10;
 }
+.settings-close .ms-Button-icon {
+    color: var(--neutralPrimary) !important;
+}
+.settings-close:hover .ms-Button-icon {
+    color: var(--primary) !important;
+}
 div[role="toolbar"] {
     display: flex;
     flex-direction: row;
