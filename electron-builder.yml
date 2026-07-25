@@ -11,6 +11,7 @@ mac:
   darkModeSupport: true
   target:
     - dmg
+  artifactName: "Fluent-Reader_MacOS_${arch}.${ext}"
   category: public.app-category.news
   electronLanguages:
     - zh_CN
@@ -33,7 +34,7 @@ mac:
 win:
   target:
     - nsis
-    - zip
+  artifactName: "Fluent-Reader_Windows_${arch}.${ext}"
 appx:
   applicationId: FluentReader
   identityName: 25286HaoyuanLiu.FluentReader

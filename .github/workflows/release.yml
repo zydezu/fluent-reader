@@ -9,6 +9,15 @@ on:
       changelog:
         description: "Release notes / changelog"
         required: false
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        default: draft
+        options:
+          - draft
+          - prerelease
+          - release
 
 jobs:
   linux_x64:
@@ -22,14 +31,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx electron-builder --linux --x64 -p never
-      - name: Zip artifact
-        run: |
-          cd bin/linux/x64
-          zip -r ../../../Fluent-Reader_Linux_x64.zip .
       - uses: actions/upload-artifact@v4
         with:
           name: Fluent-Reader_Linux_x64
-          path: Fluent-Reader_Linux_x64.zip
+          path: bin/linux/x64/Fluent-Reader_Linux_x64.AppImage
 
   macos_x64:
     name: Build macOS x64
@@ -42,14 +47,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx electron-builder --mac --x64 -p never
-      - name: Zip artifact
-        run: |
-          cd bin/darwin/x64
-          zip -r ../../../Fluent-Reader_MacOS_x64.zip .
       - uses: actions/upload-artifact@v4
         with:
           name: Fluent-Reader_MacOS_x64
-          path: Fluent-Reader_MacOS_x64.zip
+          path: bin/darwin/x64/Fluent-Reader_MacOS_x64.dmg
 
   macos_arm64:
     name: Build macOS ARM64
@@ -62,16 +63,11 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx electron-builder --mac --arm64 -p never || true
-      - name: Zip artifact
-        continue-on-error: true
-        run: |
-          cd bin/darwin/arm64
-          zip -r ../../../Fluent-Reader_MacOS_ARM64.zip .
       - uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
           name: Fluent-Reader_MacOS_ARM64
-          path: Fluent-Reader_MacOS_ARM64.zip
+          path: bin/darwin/arm64/Fluent-Reader_MacOS_arm64.dmg
 
   windows_x64:
     name: Build Windows x64
@@ -84,13 +80,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx electron-builder -w --x64 -p never
-      - name: Zip artifact
-        shell: pwsh
-        run: Compress-Archive -Path bin/win32/x64/* -DestinationPath Fluent-Reader_Windows_x64.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Fluent-Reader_Windows_x64
-          path: Fluent-Reader_Windows_x64.zip
+          path: bin/win32/x64/Fluent-Reader_Windows_x64.exe
 
   windows_arm64:
     name: Build Windows ARM64
@@ -103,15 +96,11 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx electron-builder -w --arm64 -p never || true
-      - name: Zip artifact
-        shell: pwsh
-        continue-on-error: true
-        run: Compress-Archive -Path bin/win32/arm64/* -DestinationPath Fluent-Reader_Windows_ARM64.zip
       - uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
           name: Fluent-Reader_Windows_ARM64
-          path: Fluent-Reader_Windows_ARM64.zip
+          path: bin/win32/arm64/Fluent-Reader_Windows_arm64.exe
 
   release:
     name: Create Release
