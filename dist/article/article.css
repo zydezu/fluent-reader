@@ -5,13 +5,16 @@ body {
     margin: 0;
     font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
+
 body {
     padding: 12px 96px 32px;
     overflow: hidden scroll;
 }
+
 body.rtl {
     direction: rtl;
 }
+
 body.vertical {
     padding: 32px;
     padding-right: 96px;
@@ -24,6 +27,7 @@ body.vertical {
     --primary: #0078d4;
     --primary-alt: #004578;
 }
+
 @media (prefers-color-scheme: dark) {
     :root {
         color: #f8f8f8;
@@ -43,10 +47,12 @@ b,
 strong {
     font-weight: 600;
 }
+
 a {
     color: var(--primary);
     text-decoration: none;
 }
+
 a:hover,
 a:active {
     color: var(--primary-alt);
@@ -58,21 +64,25 @@ a:active {
         opacity: 0;
         transform: translateY(10px);
     }
+
     100% {
         opacity: 1;
         transform: translateY(0);
     }
 }
+
 #main {
     max-width: 700px;
     margin: 0 auto;
     display: none;
 }
+
 body.vertical #main {
     max-width: unset;
     max-height: 700px;
     margin: auto 0;
 }
+
 #main.show {
     display: block;
     animation-name: fadeIn;
@@ -81,13 +91,14 @@ body.vertical #main {
     animation-fill-mode: both;
 }
 
-#main > p.title {
+#main>p.title {
     font-size: 1.25rem;
     line-height: 1.75rem;
     font-weight: 600;
     margin-block-end: 0;
 }
-#main > p.date {
+
+#main>p.date {
     color: var(--gray);
     font-size: 0.875rem;
 }
@@ -95,43 +106,54 @@ body.vertical #main {
 article {
     line-height: 1.6;
 }
+
 body.vertical article {
     line-height: 1.5;
 }
+
 body.vertical article p {
     text-indent: 2rem;
 }
+
 article * {
     max-width: 100%;
 }
+
 article img {
     height: auto;
 }
+
 body.vertical article img {
     max-height: 75%;
 }
+
 article figure {
     margin: 16px 0;
     text-align: center;
 }
+
 article figure figcaption {
     font-size: 0.875rem;
     color: var(--gray);
     -webkit-user-modify: read-only;
 }
+
 article iframe {
     width: 100%;
 }
+
 article code {
     font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     font-size: 0.875rem;
     line-height: 1;
 }
+
 article pre {
     word-break: normal;
     overflow-wrap: normal;
     white-space: pre-wrap;
 }
+
 article blockquote {
     border-left: 2px solid var(--gray);
     margin: 1em 0;

@@ -9,10 +9,12 @@
     0% {
         opacity: 0;
     }
+
     100% {
         opacity: 1;
     }
 }
+
 .menu-container,
 .article-container {
     position: fixed;
@@ -22,11 +24,13 @@
     width: 100%;
     height: 100%;
 }
+
 .article-container {
     backdrop-filter: var(--blur);
     animation-name: fade;
     background-color: #0008;
 }
+
 .menu-container,
 .article-container,
 .article-wrapper {
@@ -34,15 +38,19 @@
     animation-timing-function: var(--transition-timing);
     animation-fill-mode: both;
 }
+
 .menu-container {
     pointer-events: none;
 }
+
 .menu-container.show {
     pointer-events: unset;
 }
+
 .article-container {
     z-index: 6;
 }
+
 .menu-container .menu {
     position: absolute;
     left: 0;
@@ -57,30 +65,37 @@
     clip-path: inset(0 100% 0 0);
     opacity: 0;
 }
+
 .menu-container.show .menu {
     clip-path: inset(0 -50px 0 0);
     opacity: 1;
 }
+
 body.blur .menu .btn-group {
     --black: var(--neutralSecondaryAlt);
 }
+
 body.darwin .menu .btn-group {
     display: flex;
     flex-direction: row-reverse;
 }
+
 .menu-container .menu .nav-wrapper {
     max-height: calc(100% - var(--navHeight));
     overflow: hidden auto;
 }
+
 .menu-container .menu p.subs-header {
     font-size: 12px;
     color: var(--neutralSecondaryAlt);
     margin: 2px 8px;
     user-select: none;
 }
+
 .menu .link-stack {
     overflow: hidden;
 }
+
 .menu .link-text {
     margin-top: 0px;
     margin-right: 4px;
@@ -91,6 +106,7 @@ body.darwin .menu .btn-group {
     overflow: hidden;
     flex-grow: 1;
 }
+
 .menu .unread-count {
     color: var(--neutralSecondary);
 }
@@ -110,6 +126,7 @@ body.darwin .menu .btn-group {
     animation-fill-mode: both;
     overflow: hidden;
 }
+
 .settings-container .settings {
     position: relative;
     margin: 32px auto 0;
@@ -121,23 +138,28 @@ body.darwin .menu .btn-group {
     border-radius: 5px;
     overflow: hidden;
 }
+
 .settings-close {
     position: absolute;
     top: 8px;
     right: 8px;
     z-index: 10;
 }
+
 .settings-close .ms-Button-icon {
     color: var(--neutralPrimary) !important;
 }
+
 .settings-close:hover .ms-Button-icon {
     color: var(--primary) !important;
 }
+
 div[role="toolbar"] {
     display: flex;
     flex-direction: row;
     height: 100%;
 }
+
 .settings .ms-Pivot {
     display: flex;
     flex-direction: column;
@@ -150,6 +172,7 @@ div[role="toolbar"] {
     overflow-y: auto;
     white-space: normal;
 }
+
 .settings .ms-Pivot-link,
 .settings .ms-Pivot-link.is-selected {
     display: flex !important;
@@ -164,21 +187,26 @@ div[role="toolbar"] {
     border-left: 3px solid transparent;
     box-sizing: border-box;
 }
+
 .settings .ms-Pivot-link:before,
 .settings .ms-Pivot-link.is-selected:before {
     content: none !important;
 }
+
 .settings .ms-Pivot-link.is-selected {
     background-color: var(--neutralQuaternaryAlt);
     border-left-color: var(--primary);
 }
+
 .settings .ms-Pivot-linkContent {
     display: flex !important;
     align-items: center;
 }
-.settings .ms-Pivot-linkContent > * {
+
+.settings .ms-Pivot-linkContent>* {
     margin-left: 0 !important;
 }
+
 .settings .ms-Pivot-icon {
     display: inline-flex;
     align-items: center;
@@ -189,6 +217,7 @@ div[role="toolbar"] {
     font-size: 1rem;
     line-height: 1;
 }
+
 div[role="tabpanel"] {
     flex: 1;
     min-width: 0;
@@ -198,6 +227,7 @@ div[role="tabpanel"] {
     position: relative;
     box-sizing: border-box;
 }
+
 .settings-header {
     font-size: 20px;
     font-weight: 600;
@@ -205,21 +235,25 @@ div[role="tabpanel"] {
     margin: 4px 0 16px;
     color: var(--neutralPrimary);
 }
+
 .settings-category {
     font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--neutralSecondary);
-    margin: 28px 0 4px;
-    padding-top: 16px;
-    border-top: 1px solid var(--neutralLighter);
+    margin: 12px 0 4px;
 }
-.tab-body > .settings-category:first-child {
+
+.tab-body>.settings-category:first-child {
     margin-top: 0;
-    padding-top: 0;
-    border-top: none;
 }
+
+.settings-divider {
+    border: none;
+    border-top: 1px solid var(--neutralQuaternaryAlt);
+    margin: 24px 0 0;
+}
+
 .accent-color-swatch {
     width: 28px;
     height: 28px;
@@ -227,18 +261,22 @@ div[role="tabpanel"] {
     border: 1px solid var(--neutralQuaternaryAlt);
     cursor: pointer;
 }
+
 .accent-color-swatch:hover {
     border-color: var(--neutralTertiary);
 }
+
 .font-picker {
     width: 220px;
     padding: 8px;
 }
+
 .font-picker-list {
     max-height: 280px;
     overflow-y: auto;
     margin-top: 8px;
 }
+
 .font-picker-option {
     padding: 6px 8px;
     border-radius: 4px;
@@ -247,13 +285,16 @@ div[role="tabpanel"] {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .font-picker-option:hover {
     background-color: var(--neutralLighter);
 }
+
 .font-picker-option.selected {
     background-color: var(--neutralQuaternaryAlt);
     font-weight: 600;
 }
+
 .settings .loading {
     position: absolute;
     left: 0;
@@ -263,67 +304,83 @@ div[role="tabpanel"] {
     background-color: #fffa;
     z-index: 8;
 }
+
 .settings .loading .ms-Spinner {
     margin-top: 180px;
 }
+
 .settings .loading .ms-Spinner:focus {
     outline: none;
 }
+
 .tab-body .ms-StackItem {
     margin-right: 6px;
     margin-bottom: 12px;
 }
+
 .tab-body .ms-StackItem:last-child {
     margin-right: 0;
 }
+
 .tab-body .ms-ChoiceFieldGroup {
     margin-top: 10px;
     margin-bottom: 20px;
 }
+
 .tab-body .ms-CommandBar {
     padding: 0;
 }
+
 .tab-body .ms-Label {
     margin: 14px 0 6px;
 }
-.tab-body > .ms-Label:first-child {
+
+.tab-body>.ms-Label:first-child {
     margin-top: 0;
 }
+
 .tab-body .ms-Toggle {
     margin: 4px 0 12px;
 }
+
 img.favicon {
     width: 16px;
     height: 16px;
     vertical-align: middle;
     user-select: none;
 }
+
 img.favicon.dropdown {
     margin-right: 8px;
     vertical-align: sub;
 }
+
 .ms-DetailsList-contentWrapper {
     max-height: 400px;
     overflow-x: hidden;
     overflow-y: auto;
     margin-bottom: 16px;
 }
+
 /* Selecting a row otherwise bolds its row-header cell, which widens the
    text and shifts everything after it along the x axis. */
 .is-row-header {
     font-weight: inherit !important;
 }
+
 .settings-hint {
     user-select: none;
     line-height: 32px;
     font-size: 12px;
     color: var(--neutralSecondary);
 }
+
 .settings-hint.up {
     position: relative;
     top: -12px;
     line-height: unset;
 }
+
 .settings-card {
     margin-top: 4px;
     padding: 12px 16px 16px;
@@ -331,54 +388,67 @@ img.favicon.dropdown {
     border-radius: 6px;
     background-color: var(--neutralLighterAlt);
 }
+
 .settings-card .ms-Label {
     margin-top: 0;
 }
+
 .settings-link {
     color: var(--primary);
     cursor: pointer;
     user-select: none;
 }
+
 .settings-link:hover {
     text-decoration: underline;
 }
+
 .group-favicon-stack {
     display: inline-flex;
     align-items: center;
 }
+
 .group-favicon-stack img.favicon {
     margin-left: -6px;
     border-radius: 2px;
     box-shadow: 0 0 0 1px var(--white);
 }
+
 .group-favicon-stack img.favicon:first-child {
     margin-left: 0;
 }
+
 .settings-about {
     margin: 32px 0 24px;
     color: var(--black);
 }
-.settings-about > * {
+
+.settings-about>* {
     margin: 0 !important;
     -webkit-user-drag: none;
 }
+
 .settings-rules-icons i {
     color: var(--black);
     user-select: none;
 }
+
 .settings-rules-icons i:last-of-type {
     color: var(--neutralSecondary);
 }
+
 .about-shortcuts {
     max-width: 560px;
     margin: 0 auto 24px;
     color: var(--black);
 }
+
 .about-shortcuts h3 {
     margin: 0 0 8px;
     font-size: 16px;
     font-weight: 600;
 }
+
 .about-shortcuts h4 {
     margin: 16px 0 8px;
     font-size: 13px;
@@ -386,25 +456,30 @@ img.favicon.dropdown {
     text-transform: uppercase;
     letter-spacing: 0.02em;
 }
+
 .about-shortcuts h4:first-of-type {
     margin-top: 4px;
 }
+
 .shortcuts-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
 }
+
 .shortcuts-table td,
 .shortcuts-table th {
     padding: 6px 8px;
     text-align: left;
     border-bottom: 1px solid var(--neutralLighter);
 }
+
 .shortcuts-table th {
     color: var(--neutralSecondary);
     font-weight: 600;
     width: 130px;
 }
+
 .shortcuts-table kbd {
     display: inline-block;
     margin: 1px 4px 1px 0;
@@ -416,9 +491,11 @@ img.favicon.dropdown {
     font-size: 12px;
     line-height: 1.4;
 }
+
 .login-form {
     width: 300px;
 }
+
 .login-form .ms-Label {
     width: 72px;
 }
@@ -429,6 +506,7 @@ img.favicon.dropdown {
     overflow: hidden;
     background-color: var(--neutralLighterAlt);
 }
+
 .main::before {
     content: "";
     display: block;
@@ -441,6 +519,7 @@ img.favicon.dropdown {
     background: linear-gradient(var(--neutralLighterAlt), #faf9f800);
     z-index: 1;
 }
+
 .article-search {
     z-index: 4;
     position: absolute;
@@ -455,20 +534,24 @@ img.favicon.dropdown {
     box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132),
         0 0.3px 0.9px 0 rgba(0, 0, 0, 0.108);
 }
+
 body.darwin.not-fullscreen .article-search {
     left: 108px;
     max-width: calc(100% - 384px);
 }
+
 .list-main .article-search {
     max-width: 294px;
     margin: 4px 10px;
 }
+
 body.darwin .list-main .article-search {
     max-width: 314px;
     left: 0;
     top: var(--navHeight);
     margin: 0 10px;
 }
+
 .main,
 .list-main {
     transition: margin-left var(--transition-timing) 0.367s;
@@ -476,37 +559,46 @@ body.darwin .list-main .article-search {
 }
 
 @media (min-width: 1440px) {
-    #root > nav.menu-on {
+    #root>nav.menu-on {
         padding-left: 296px;
     }
-    #root > nav.menu-on span.title,
-    body.darwin #root > nav.menu-on span.title {
+
+    #root>nav.menu-on span.title,
+    body.darwin #root>nav.menu-on span.title {
         max-width: 300px;
     }
+
     nav.menu-on .btn-group .btn {
         display: inline-block;
     }
+
     nav.item-on .btn-group .btn.system {
         color: var(--whiteConstant);
     }
+
     .menu-container {
         width: 280px;
         background: none;
         backdrop-filter: none;
     }
+
     .menu-container .menu {
         background-color: var(--neutralLight);
         box-shadow: none;
     }
+
     .menu-container.show .menu {
         clip-path: inset(0);
     }
+
     body.darwin .menu-container .menu {
         background: none;
     }
+
     body.darwin .menu-container .menu.item-on {
         background-color: var(--neutralLight);
     }
+
     .menu-container .menu::after {
         content: "";
         display: block;
@@ -518,22 +610,27 @@ body.darwin .list-main .article-search {
         height: 120%;
         box-shadow: inset 5px 0 25px #0004;
     }
+
     .main.menu-on,
     .list-main.menu-on {
         margin-left: 280px;
     }
+
     .menu-on .article-search {
         left: 280px;
         max-width: calc(100% - 728px);
     }
+
     body.darwin .menu-on .article-search {
         left: 280px;
         max-width: calc(100% - 556px);
     }
+
     .list-main.menu-on .article-search {
         left: 0;
         width: 330px;
     }
+
     body.darwin .list-main.menu-on .article-search {
         left: 0;
         top: 4px;
@@ -544,6 +641,7 @@ body.darwin .list-main .article-search {
     .menu .btn-group .btn.hide-wide {
         display: none;
     }
+
     .btn-group .btn.inline-block-wide {
         display: inline-block;
     }

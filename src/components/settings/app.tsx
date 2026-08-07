@@ -390,6 +390,7 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
         </Stack.Item>
       </Stack>
 
+      <hr className="settings-divider" />
       <div className="settings-category">Appearance</div>
 
       <ChoiceGroup
@@ -507,6 +508,7 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
         these animations entirely.
       </span>
 
+      <hr className="settings-divider" />
       <div className="settings-category">Images &amp; thumbnails</div>
 
       <Toggle
@@ -559,6 +561,7 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
         </span>
       )}
 
+      <hr className="settings-divider" />
       <div className="settings-category">Network</div>
 
       <Stack horizontal verticalAlign="baseline">
@@ -603,6 +606,7 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
         </form>
       )}
 
+      <hr className="settings-divider" />
       <div className="settings-category">Data &amp; storage</div>
 
       <Label>{intl.get("app.cleanup")}</Label>

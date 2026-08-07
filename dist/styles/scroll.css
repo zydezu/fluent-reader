@@ -2,12 +2,15 @@
     width: 10px;
     height: 10px;
 }
+
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
 ::-webkit-scrollbar-corner {
     background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
     border: 2px solid transparent;
     border-radius: 10px;
@@ -15,19 +18,24 @@
     background-clip: padding-box;
     transition: background-color 0.15s;
 }
+
 ::-webkit-scrollbar-thumb:hover {
     background-color: #0006;
 }
+
 ::-webkit-scrollbar-thumb:active {
     background-color: #0008;
 }
+
 @media (prefers-color-scheme: dark) {
     ::-webkit-scrollbar-thumb {
         background-color: #fff4;
     }
+
     ::-webkit-scrollbar-thumb:hover {
         background-color: #fff6;
     }
+
     ::-webkit-scrollbar-thumb:active {
         background-color: #fff8;
     }
