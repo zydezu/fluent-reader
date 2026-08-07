@@ -117,4 +117,5 @@ export type SchemaTypes = {
     autoLoadMore: boolean
     cardBlurBackground: boolean
     thumbnailProxyFormat: ProxyImageFormat
+    fadeAnimationSpeed: number
 }

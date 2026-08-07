@@ -179,9 +179,28 @@ export function isAutoLoadMoreEnabled(): boolean {
     return autoLoadMoreEnabled
 }
 
+// Scales every fade-in animation/transition duration (article overlay, cards,
+// thumbnails, settings panel) - those durations are defined as
+// calc(<base> * var(--fade-speed-multiplier)) in CSS, so 0 collapses them to
+// instant rather than needing separate "disabled" styles.
+function applyFadeSpeedCssVar(speed: number) {
+    document.documentElement.style.setProperty(
+        "--fade-speed-multiplier",
+        String(speed)
+    )
+}
+export function setFadeAnimationSpeed(speed: number) {
+    window.settings.setFadeAnimationSpeed(speed)
+    applyFadeSpeedCssVar(speed)
+}
+export function getFadeAnimationSpeed(): number {
+    return window.settings.getFadeAnimationSpeed()
+}
+
 currentAppFont = getAppFont()
 buildThemes(getAccentColor())
 applyAccentCssVars(getAccentColor())
+applyFadeSpeedCssVar(getFadeAnimationSpeed())
 
 export function setThemeDefaultFont(locale: string) {
     currentLocale = locale

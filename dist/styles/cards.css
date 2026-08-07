@@ -64,7 +64,7 @@
     transform: scale(1);
     cursor: pointer;
     overflow: hidden;
-    animation: card-fade-in 0.25s ease-out;
+    animation: card-fade-in calc(0.25s * var(--fade-speed-multiplier)) ease-out;
 }
 @keyframes card-fade-in {
     from {
@@ -154,7 +154,8 @@
     transition: transform ease-out 0.12s;
 }
 .default-card img.head.img-fade-in {
-    transition: transform ease-out 0.12s, opacity 0.25s ease-out;
+    transition: transform ease-out 0.12s,
+        opacity calc(0.25s * var(--fade-speed-multiplier)) ease-out;
 }
 .default-card.transform:hover img.head,
 .default-card.transform:hover p,

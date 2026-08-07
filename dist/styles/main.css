@@ -30,7 +30,7 @@
 .menu-container,
 .article-container,
 .article-wrapper {
-    animation-duration: 0.5s;
+    animation-duration: calc(0.5s * var(--fade-speed-multiplier));
     animation-timing-function: var(--transition-timing);
     animation-fill-mode: both;
 }
@@ -105,7 +105,7 @@ body.darwin .menu .btn-group {
     background-color: #0008;
     backdrop-filter: var(--blur);
     animation-name: fade;
-    animation-duration: 0.5s;
+    animation-duration: calc(0.5s * var(--fade-speed-multiplier));
     animation-timing-function: var(--transition-timing);
     animation-fill-mode: both;
     overflow: hidden;
@@ -204,6 +204,21 @@ div[role="tabpanel"] {
     line-height: 26px;
     margin: 4px 0 16px;
     color: var(--neutralPrimary);
+}
+.settings-category {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--neutralSecondary);
+    margin: 28px 0 4px;
+    padding-top: 16px;
+    border-top: 1px solid var(--neutralLighter);
+}
+.tab-body > .settings-category:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
 }
 .accent-color-swatch {
     width: 28px;

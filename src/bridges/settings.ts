@@ -60,6 +60,13 @@ const settingsBridge = {
         ipcRenderer.invoke("set-thumbnail-proxy-format", format)
     },
 
+    getFadeAnimationSpeed: (): number => {
+        return ipcRenderer.sendSync("get-fade-animation-speed")
+    },
+    setFadeAnimationSpeed: (speed: number) => {
+        ipcRenderer.invoke("set-fade-animation-speed", speed)
+    },
+
     getAutoLoadMore: (): boolean => {
         return ipcRenderer.sendSync("get-auto-load-more")
     },

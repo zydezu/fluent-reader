@@ -81,6 +81,14 @@ ipcMain.handle("set-thumbnail-proxy-format", (_, format: ProxyImageFormat) => {
     store.set(THUMBNAIL_PROXY_FORMAT_KEY, format)
 })
 
+const FADE_ANIMATION_SPEED_KEY = "fadeAnimationSpeed"
+ipcMain.on("get-fade-animation-speed", event => {
+    event.returnValue = store.get(FADE_ANIMATION_SPEED_KEY, 1)
+})
+ipcMain.handle("set-fade-animation-speed", (_, speed: number) => {
+    store.set(FADE_ANIMATION_SPEED_KEY, speed)
+})
+
 const AUTO_LOAD_MORE_KEY = "autoLoadMore"
 ipcMain.on("get-auto-load-more", event => {
     event.returnValue = store.get(AUTO_LOAD_MORE_KEY, true)
