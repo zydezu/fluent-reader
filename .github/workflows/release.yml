@@ -124,15 +124,24 @@ jobs:
       - name: List artifacts
         run: ls -la releases/
       - name: Create GitHub release
-        run: |
-          if [ -n "${{ github.event.inputs.changelog }}" ]; then
-            gh release create "${{ github.event.inputs.tag }}" releases/* \
-              --title "Fluent Reader ${{ github.event.inputs.tag }}" \
-              --notes "${{ github.event.inputs.changelog }}"
-          else
-            gh release create "${{ github.event.inputs.tag }}" releases/* \
-              --title "Fluent Reader ${{ github.event.inputs.tag }}" \
-              --generate-notes
-          fi
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          CHANGELOG: ${{ inputs.changelog }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          flags=()
+          case "$RELEASE_TYPE" in
+            draft)      flags+=(--draft) ;;
+            prerelease) flags+=(--prerelease) ;;
+          esac
+
+          if [ -n "$CHANGELOG" ]; then
+            flags+=(--notes "$CHANGELOG")
+          else
+            flags+=(--generate-notes)
+          fi
+
+          gh release create "$TAG" releases/* \
+            --title "Fluent Reader $TAG" \
+            "${flags[@]}"
