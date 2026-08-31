@@ -10,7 +10,12 @@ import {
     AppThunk,
     platformCtrl,
 } from "../utils"
-import { RSSSource, updateSource, updateUnreadCounts } from "./source"
+import {
+    RSSSource,
+    SourceState,
+    updateSource,
+    updateUnreadCounts,
+} from "./source"
 import { FeedActionTypes, INIT_FEED, LOAD_MORE, dismissItems } from "./feed"
 import {
     pushNotification,
@@ -130,6 +135,7 @@ interface FetchItemsAction {
     fetchCount?: number
     items?: RSSItem[]
     itemState?: ItemState
+    sources?: SourceState
     errSource?: RSSSource
     err?
 }
@@ -159,6 +165,7 @@ interface ToggleStarredAction {
 interface ToggleHiddenAction {
     type: typeof TOGGLE_HIDDEN
     item: RSSItem
+    sources: SourceState
 }
 
 export type ItemActionTypes =
@@ -179,13 +186,15 @@ export function fetchItemsRequest(fetchCount = 0): ItemActionTypes {
 
 export function fetchItemsSuccess(
     items: RSSItem[],
-    itemState: ItemState
+    itemState: ItemState,
+    sources: SourceState = {}
 ): ItemActionTypes {
     return {
         type: FETCH_ITEMS,
         status: ActionStatus.Success,
         items: items,
         itemState: itemState,
+        sources: sources,
     }
 }
 
@@ -272,7 +281,8 @@ export function fetchItems(
                         dispatch(
                             fetchItemsSuccess(
                                 inserted.reverse(),
-                                getState().items
+                                getState().items,
+                                getState().sources
                             )
                         )
                         resolve()
@@ -291,7 +301,13 @@ export function fetchItems(
                         dispatch(setupAutoFetch())
                     })
                     .catch(err => {
-                        dispatch(fetchItemsSuccess([], getState().items))
+                        dispatch(
+                            fetchItemsSuccess(
+                                [],
+                                getState().items,
+                                getState().sources
+                            )
+                        )
                         window.utils.showErrorBox(
                             "A database error has occurred.",
                             String(err)
@@ -418,19 +434,23 @@ export function toggleStarred(item: RSSItem): AppThunk {
     }
 }
 
-const toggleHiddenDone = (item: RSSItem): ItemActionTypes => ({
+const toggleHiddenDone = (
+    item: RSSItem,
+    sources: SourceState
+): ItemActionTypes => ({
     type: TOGGLE_HIDDEN,
     item: item,
+    sources: sources,
 })
 
 export function toggleHidden(item: RSSItem): AppThunk {
-    return dispatch => {
+    return (dispatch, getState) => {
         db.itemsDB
             .update(db.items)
             .where(db.items._id.eq(item._id))
             .set(db.items.hidden, !item.hidden)
             .exec()
-        dispatch(toggleHiddenDone(item))
+        dispatch(toggleHiddenDone(item, getState().sources))
     }
 }
 

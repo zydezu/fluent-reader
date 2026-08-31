@@ -7,6 +7,7 @@ import {
     DELETE_SOURCE,
     UNHIDE_SOURCE,
     HIDE_SOURCE,
+    SourceState,
 } from "./source"
 import {
     ItemActionTypes,
@@ -73,12 +74,16 @@ export class FeedFilter {
         return predicates
     }
 
-    static testItem(filter: FeedFilter, item: RSSItem) {
+    static testItem(filter: FeedFilter, item: RSSItem, sources?: SourceState) {
         let type = filter.type
         let flag = true
         if (!(type & FilterType.ShowRead)) flag = flag && !item.hasRead
         if (!(type & FilterType.ShowNotStarred)) flag = flag && item.starred
         if (!(type & FilterType.ShowHidden)) flag = flag && !item.hidden
+        if (sources) {
+            const source = sources[item.source]
+            if (source && source.imageOnly) flag = flag && Boolean(item.thumb)
+        }
         if (filter.search !== "") {
             const flags = type & FilterType.CaseInsensitive ? "i" : ""
             const regex = RegExp(filter.search, flags)
@@ -100,6 +105,18 @@ export const SOURCE = "SOURCE"
 
 const LOAD_QUANTITY = 50
 
+function sourcesPredicate(sids: number[], sources: SourceState): lf.Predicate {
+    const clauses = sids.map(sid => {
+        const source = sources[sid]
+        return source && source.imageOnly
+            ? lf.op.and(db.items.source.eq(sid), db.items.thumb.isNotNull())
+            : db.items.source.eq(sid)
+    })
+    if (clauses.length === 0) return db.items.source.in([])
+    if (clauses.length === 1) return clauses[0]
+    return lf.op.or.apply(null, clauses)
+}
+
 export class RSSFeed {
     _id: string
     loaded: boolean
@@ -118,9 +135,13 @@ export class RSSFeed {
         this.filter = filter === null ? new FeedFilter() : filter
     }
 
-    static async loadFeed(feed: RSSFeed, skip = 0): Promise<RSSItem[]> {
+    static async loadFeed(
+        feed: RSSFeed,
+        sources: SourceState,
+        skip = 0
+    ): Promise<RSSItem[]> {
         const predicates = FeedFilter.toPredicates(feed.filter)
-        predicates.push(db.items.source.in(feed.sids))
+        predicates.push(sourcesPredicate(feed.sids, sources))
         return (await db.itemsDB
             .select()
             .from(db.items)
@@ -182,7 +203,7 @@ export function dismissItems(): AppThunk {
         let iids = new Set<number>()
         for (let iid of state.feeds[fid].iids) {
             let item = state.items[iid]
-            if (!FeedFilter.testItem(filter, item)) {
+            if (!FeedFilter.testItem(filter, item, state.sources)) {
                 iids.add(iid)
             }
         }
@@ -231,9 +252,10 @@ export function initFeeds(force = false): AppThunk<Promise<void>> {
     return (dispatch, getState) => {
         dispatch(initFeedsRequest())
         let promises = new Array<Promise<void>>()
+        const sources = getState().sources
         for (let feed of Object.values(getState().feeds)) {
             if (!feed.loaded || force) {
-                let p = RSSFeed.loadFeed(feed)
+                let p = RSSFeed.loadFeed(feed, sources)
                     .then(items => {
                         dispatch(initFeedSuccess(feed, items))
                     })
@@ -285,9 +307,9 @@ export function loadMore(feed: RSSFeed): AppThunk<Promise<void>> {
             dispatch(loadMoreRequest(feed))
             const state = getState()
             const skipNum = feed.iids.filter(i =>
-                FeedFilter.testItem(feed.filter, state.items[i])
+                FeedFilter.testItem(feed.filter, state.items[i], state.sources)
             ).length
-            return RSSFeed.loadFeed(feed, skipNum)
+            return RSSFeed.loadFeed(feed, state.sources, skipNum)
                 .then(items => {
                     dispatch(loadMoreSuccess(feed, items))
                 })
@@ -372,7 +394,11 @@ export function feedReducer(
                             let items = action.items.filter(
                                 i =>
                                     feed.sids.includes(i.source) &&
-                                    FeedFilter.testItem(feed.filter, i)
+                                    FeedFilter.testItem(
+                                        feed.filter,
+                                        i,
+                                        action.sources
+                                    )
                             )
                             if (items.length > 0) {
                                 let oldItems = feed.iids.map(
@@ -457,7 +483,8 @@ export function feedReducer(
             let nextItem = applyItemReduction(action.item, action.type)
             let filteredFeeds = Object.values(state).filter(
                 feed =>
-                    feed.loaded && !FeedFilter.testItem(feed.filter, nextItem)
+                    feed.loaded &&
+                    !FeedFilter.testItem(feed.filter, nextItem, action.sources)
             )
             if (filteredFeeds.length > 0) {
                 let nextState = { ...state }

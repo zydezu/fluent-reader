@@ -50,6 +50,7 @@ export class RSSSource {
     rules?: SourceRule[]
     textDir: SourceTextDirection
     hidden: boolean
+    imageOnly: boolean
 
     constructor(url: string, name: string = null) {
         this.url = url
@@ -59,6 +60,7 @@ export class RSSSource {
         this.fetchFrequency = 0
         this.textDir = SourceTextDirection.LTR
         this.hidden = false
+        this.imageOnly = false
     }
 
     static async fetchMetaData(source: RSSSource) {
@@ -207,14 +209,46 @@ export function initSourcesFailure(err): SourceActionTypes {
 }
 
 async function unreadCount(sources: SourceState): Promise<SourceState> {
-    const rows = await db.itemsDB
-        .select(db.items.source, lf.fn.count(db.items._id))
-        .from(db.items)
-        .where(db.items.hasRead.eq(false))
-        .groupBy(db.items.source)
-        .exec()
-    for (let row of rows) {
-        sources[row["source"]].unreadCount = row["COUNT(_id)"]
+    const allSids = Object.keys(sources).map(Number)
+    const imageOnlySids = allSids.filter(sid => sources[sid].imageOnly)
+    const normalSids = allSids.filter(sid => !sources[sid].imageOnly)
+    const queries: Promise<{ [key: string]: any }[]>[] = []
+    if (normalSids.length > 0) {
+        queries.push(
+            db.itemsDB
+                .select(db.items.source, lf.fn.count(db.items._id))
+                .from(db.items)
+                .where(
+                    lf.op.and(
+                        db.items.hasRead.eq(false),
+                        db.items.source.in(normalSids)
+                    )
+                )
+                .groupBy(db.items.source)
+                .exec() as Promise<{ [key: string]: any }[]>
+        )
+    }
+    if (imageOnlySids.length > 0) {
+        queries.push(
+            db.itemsDB
+                .select(db.items.source, lf.fn.count(db.items._id))
+                .from(db.items)
+                .where(
+                    lf.op.and(
+                        db.items.hasRead.eq(false),
+                        db.items.source.in(imageOnlySids),
+                        db.items.thumb.isNotNull()
+                    )
+                )
+                .groupBy(db.items.source)
+                .exec() as Promise<{ [key: string]: any }[]>
+        )
+    }
+    const results = await Promise.all(queries)
+    for (const rows of results) {
+        for (let row of rows) {
+            sources[row["source"]].unreadCount = row["COUNT(_id)"]
+        }
     }
     return sources
 }

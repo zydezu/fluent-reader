@@ -100,6 +100,14 @@ const mapDispatchToProps = (dispatch: AppDispatch) => {
         exportOPML: () => dispatch(exportOPML()),
         toggleSourceHidden: (source: RSSSource) =>
             dispatch(toggleSourceHidden(source)),
+        toggleSourceImageOnly: (source: RSSSource) => {
+            dispatch(
+                updateSource({
+                    ...source,
+                    imageOnly: !source.imageOnly,
+                } as RSSSource)
+            )
+        },
     }
 }
 

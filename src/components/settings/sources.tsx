@@ -55,6 +55,7 @@ type SourcesTabProps = {
     importOPML: () => void
     exportOPML: () => void
     toggleSourceHidden: (source: RSSSource) => void
+    toggleSourceImageOnly: (source: RSSSource) => void
     onManageGroup: (groupIndex: number) => void
 }
 
@@ -363,6 +364,16 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         })
     }
 
+    onToggleImageOnly = () => {
+        this.props.toggleSourceImageOnly(this.state.selectedSource)
+        this.setState({
+            selectedSource: {
+                ...this.state.selectedSource,
+                imageOnly: !this.state.selectedSource.imageOnly,
+            } as RSSSource,
+        })
+    }
+
     render = () => (
         <div className="tab-body">
             {this.props.serviceOn && (
@@ -652,6 +663,17 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                             <Toggle
                                 checked={this.state.selectedSource.hidden}
                                 onChange={this.onToggleHidden}
+                            />
+                        </Stack.Item>
+                    </Stack>
+                    <Stack horizontal verticalAlign="baseline">
+                        <Stack.Item grow>
+                            <Label>{intl.get("sources.imageOnly")}</Label>
+                        </Stack.Item>
+                        <Stack.Item>
+                            <Toggle
+                                checked={this.state.selectedSource.imageOnly}
+                                onChange={this.onToggleImageOnly}
                             />
                         </Stack.Item>
                     </Stack>
