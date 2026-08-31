@@ -69,6 +69,7 @@ nsis:
 linux:
   target:
     - AppImage
+  artifactName: "Fluent-Reader_Linux_${arch}.${ext}"
   icon: icons
   category: Network;Feed;
   desktop:
