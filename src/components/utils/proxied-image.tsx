@@ -58,8 +58,28 @@ const scaledSize = (resize: Resize) => {
     }
 }
 
+// resize some CDNS via ?resize=w,h
+const PHOTON_HOST = /(?:^|\.)wp\.com$|(?:^|\.)theverge\.com$/
+
+const photonResize = (src: string, width: number, height: number): string => {
+    let u: URL
+    try {
+        u = new URL(src)
+    } catch {
+        return null
+    }
+    if (!PHOTON_HOST.test(u.hostname)) return null
+    const out = new URL(u.origin + u.pathname)
+    out.searchParams.set("resize", `${width},${height}`)
+    out.searchParams.set("quality", "80")
+    out.searchParams.set("strip", "all")
+    return out.toString()
+}
+
 const buildProxySrc = (src: string, resize: Resize) => {
     const { width, height } = scaledSize(resize)
+    const photon = photonResize(src, width, height)
+    if (photon) return photon
     const format =
         proxyFormat === ProxyImageFormat.Original
             ? ""
@@ -154,9 +174,9 @@ export const ProxiedImage: React.FunctionComponent<Props> = ({
                 setUsedProxy(true)
                 setLoaded(false)
             }
-        } else if (mode !== ThumbnailResizeMode.Off) {
-            // Resized source failed - fall back to the original image.
-            setSrc(originalSrc)
+        } else if (src !== BLANK_IMAGE) {
+            // The proxy failed too, use a missing thumbnail
+            setSrc(BLANK_IMAGE)
             setLoaded(false)
         }
     }

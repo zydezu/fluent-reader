@@ -39,6 +39,15 @@ getArticle(url).then(article => {
     for (let img of dom.querySelectorAll("img")) {
         img.setAttribute("loading", "lazy")
         img.setAttribute("decoding", "async")
+        try {
+            let u = new URL(img.src)
+            if (/(?:^|\.)wp\.com$|(?:^|\.)theverge\.com$/.test(u.hostname)) {
+                u.searchParams.set("w", "1200")
+                u.searchParams.set("quality", "80")
+                u.searchParams.set("strip", "all")
+                img.setAttribute("src", u.toString())
+            }
+        } catch (e) {}
     }
     for (let frame of dom.querySelectorAll("iframe")) {
         frame.setAttribute("loading", "lazy")
