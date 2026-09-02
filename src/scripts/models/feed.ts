@@ -155,29 +155,46 @@ export class RSSFeed {
     ): Promise<RSSItem[]> {
         const groups = sourceQueryGroups(feed.sids, sources)
         if (groups.length === 0) return []
-        // Fetch the newest (skip + LOAD_QUANTITY) rows for each group so that the
-        // merged head is guaranteed to contain the correct global page.
+        // Rebuild the filter predicates per query: Lovefield mutates predicate
+        // nodes when composing a query, so they can't be shared between queries.
+        const whereFor = (sourcePredicates: lf.Predicate[]) => {
+            const predicates = [
+                ...FeedFilter.toPredicates(feed.filter),
+                ...sourcePredicates,
+            ]
+            return predicates.length === 1
+                ? predicates[0]
+                : lf.op.and.apply(null, predicates)
+        }
+
+        // Fast path: a single `source IN (...)` query paginates correctly, so
+        // push skip/limit straight into the query and only materialise one page.
+        if (groups.length === 1) {
+            return db.itemsDB
+                .select()
+                .from(db.items)
+                .where(whereFor(groups[0]))
+                .orderBy(db.items.date, lf.Order.DESC)
+                .skip(skip)
+                .limit(LOAD_QUANTITY)
+                .exec() as Promise<RSSItem[]>
+        }
+
+        // Multiple predicate shapes (some sources are image-only): the global
+        // skip can't be mapped onto each sub-query, so fetch each group's head
+        // and merge. Only hit when a feed mixes image-only and normal sources.
         const head = skip + LOAD_QUANTITY
         const results = await Promise.all(
-            groups.map(sourcePredicates => {
-                // Rebuild the filter predicates per query: Lovefield mutates
-                // predicate nodes when composing a query, so they can't be shared.
-                const predicates = [
-                    ...FeedFilter.toPredicates(feed.filter),
-                    ...sourcePredicates,
-                ]
-                const where =
-                    predicates.length === 1
-                        ? predicates[0]
-                        : lf.op.and.apply(null, predicates)
-                return db.itemsDB
-                    .select()
-                    .from(db.items)
-                    .where(where)
-                    .orderBy(db.items.date, lf.Order.DESC)
-                    .limit(head)
-                    .exec() as Promise<RSSItem[]>
-            })
+            groups.map(
+                sourcePredicates =>
+                    db.itemsDB
+                        .select()
+                        .from(db.items)
+                        .where(whereFor(sourcePredicates))
+                        .orderBy(db.items.date, lf.Order.DESC)
+                        .limit(head)
+                        .exec() as Promise<RSSItem[]>
+            )
         )
         const merged = results.reduce((a, b) =>
             mergeSortedArrays(a, b, (x, y) => y.date.getTime() - x.date.getTime())

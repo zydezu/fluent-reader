@@ -30,8 +30,18 @@ getArticle(url).then(article => {
     let baseEl = dom.createElement('base')
     baseEl.setAttribute('href', url.split("/").slice(0, 3).join("/"))
     dom.head.append(baseEl)
-    for (let s of dom.getElementsByTagName("script")) {
+    for (let s of Array.from(dom.getElementsByTagName("script"))) {
         s.parentNode.removeChild(s)
+    }
+    // Defer images and embeds: an embed-heavy article (e.g. The Verge) can
+    // otherwise spin up a dozen third-party iframes and decode every full-size
+    // image at once, freezing the renderer.
+    for (let img of dom.querySelectorAll("img")) {
+        img.setAttribute("loading", "lazy")
+        img.setAttribute("decoding", "async")
+    }
+    for (let frame of dom.querySelectorAll("iframe")) {
+        frame.setAttribute("loading", "lazy")
     }
     for (let e of dom.querySelectorAll("*[src]")) {
         e.src = e.src
