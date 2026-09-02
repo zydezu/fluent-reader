@@ -142,7 +142,7 @@ export class RSSFeed {
     ): Promise<RSSItem[]> {
         const predicates = FeedFilter.toPredicates(feed.filter)
         predicates.push(sourcesPredicate(feed.sids, sources))
-        return (await db.itemsDB
+        const items = (await db.itemsDB
             .select()
             .from(db.items)
             .where(lf.op.and.apply(null, predicates))
@@ -150,6 +150,10 @@ export class RSSFeed {
             .skip(skip)
             .limit(LOAD_QUANTITY)
             .exec()) as RSSItem[]
+        // Lovefield's ordering is plan-dependent once the source predicate is an
+        // OR chain, so enforce reverse-chronological order here as well.
+        items.sort((a, b) => b.date.getTime() - a.date.getTime())
+        return items
     }
 }
 

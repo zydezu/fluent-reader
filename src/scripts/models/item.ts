@@ -58,7 +58,10 @@ export class RSSItem {
             : intl.get("article.untitled")
         this.link = item.link || ""
         this.fetchedDate = new Date()
-        this.date = new Date(item.isoDate ?? item.pubDate ?? this.fetchedDate)
+        const parsedDate = new Date(item.isoDate ?? item.pubDate ?? this.fetchedDate)
+        // Fall back to the fetch time when a feed supplies an unparseable date,
+        // otherwise the NaN timestamp corrupts date ordering and indexing.
+        this.date = isNaN(parsedDate.getTime()) ? this.fetchedDate : parsedDate
         this.creator = item.creator
         this.hasRead = false
         this.starred = false
@@ -215,6 +218,15 @@ export function fetchItemsIntermediate(): ItemActionTypes {
 }
 
 export async function insertItems(items: RSSItem[]): Promise<RSSItem[]> {
+    // Service items are built without the RSSItem constructor, so guard here
+    // against unparseable dates that would otherwise break sorting and indexing.
+    for (let item of items) {
+        if (isNaN(item.date.getTime())) {
+            item.date = isNaN(item.fetchedDate.getTime())
+                ? new Date()
+                : item.fetchedDate
+        }
+    }
     items.sort((a, b) => a.date.getTime() - b.date.getTime())
     const rows = items.map(item => db.items.createRow(item))
     return (await db.itemsDB
