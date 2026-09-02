@@ -1,6 +1,6 @@
 {
   "name": "fluent-reader",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Modern desktop RSS reader",
   "main": "./dist/electron.js",
   "scripts": {
@@ -52,6 +52,10 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "node-polyfill-webpack-plugin": "^2.0.1"
+    "node-polyfill-webpack-plugin": "^4.1.0"
+  },
+  "allowScripts": {
+    "electron-winstaller@5.4.0": true,
+    "react-intl-universal@2.12.0": true
   }
 }

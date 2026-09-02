@@ -105,16 +105,29 @@ export const SOURCE = "SOURCE"
 
 const LOAD_QUANTITY = 50
 
-function sourcesPredicate(sids: number[], sources: SourceState): lf.Predicate {
-    const clauses = sids.map(sid => {
-        const source = sources[sid]
-        return source && source.imageOnly
-            ? lf.op.and(db.items.source.eq(sid), db.items.thumb.isNotNull())
-            : db.items.source.eq(sid)
-    })
-    if (clauses.length === 0) return db.items.source.in([])
-    if (clauses.length === 1) return clauses[0]
-    return lf.op.or.apply(null, clauses)
+// Lovefield silently drops the orderBy for skip()/limit() queries whose
+// predicate contains a top-level OR, which returns an arbitrary (and
+// mis-ordered) page of rows. So instead of building one OR predicate spanning
+// every source, loadFeed runs one plain `source IN (...)` query per predicate
+// shape and merges the (correctly ordered) results in JS.
+function sourceQueryGroups(
+    sids: number[],
+    sources: SourceState
+): lf.Predicate[][] {
+    const normalSids = sids.filter(
+        sid => !(sources[sid] && sources[sid].imageOnly)
+    )
+    const imageOnlySids = sids.filter(
+        sid => sources[sid] && sources[sid].imageOnly
+    )
+    const groups: lf.Predicate[][] = []
+    if (normalSids.length > 0) groups.push([db.items.source.in(normalSids)])
+    if (imageOnlySids.length > 0)
+        groups.push([
+            db.items.source.in(imageOnlySids),
+            db.items.thumb.isNotNull(),
+        ])
+    return groups
 }
 
 export class RSSFeed {
@@ -140,20 +153,36 @@ export class RSSFeed {
         sources: SourceState,
         skip = 0
     ): Promise<RSSItem[]> {
-        const predicates = FeedFilter.toPredicates(feed.filter)
-        predicates.push(sourcesPredicate(feed.sids, sources))
-        const items = (await db.itemsDB
-            .select()
-            .from(db.items)
-            .where(lf.op.and.apply(null, predicates))
-            .orderBy(db.items.date, lf.Order.DESC)
-            .skip(skip)
-            .limit(LOAD_QUANTITY)
-            .exec()) as RSSItem[]
-        // Lovefield's ordering is plan-dependent once the source predicate is an
-        // OR chain, so enforce reverse-chronological order here as well.
-        items.sort((a, b) => b.date.getTime() - a.date.getTime())
-        return items
+        const groups = sourceQueryGroups(feed.sids, sources)
+        if (groups.length === 0) return []
+        // Fetch the newest (skip + LOAD_QUANTITY) rows for each group so that the
+        // merged head is guaranteed to contain the correct global page.
+        const head = skip + LOAD_QUANTITY
+        const results = await Promise.all(
+            groups.map(sourcePredicates => {
+                // Rebuild the filter predicates per query: Lovefield mutates
+                // predicate nodes when composing a query, so they can't be shared.
+                const predicates = [
+                    ...FeedFilter.toPredicates(feed.filter),
+                    ...sourcePredicates,
+                ]
+                const where =
+                    predicates.length === 1
+                        ? predicates[0]
+                        : lf.op.and.apply(null, predicates)
+                return db.itemsDB
+                    .select()
+                    .from(db.items)
+                    .where(where)
+                    .orderBy(db.items.date, lf.Order.DESC)
+                    .limit(head)
+                    .exec() as Promise<RSSItem[]>
+            })
+        )
+        const merged = results.reduce((a, b) =>
+            mergeSortedArrays(a, b, (x, y) => y.date.getTime() - x.date.getTime())
+        )
+        return merged.slice(skip, head)
     }
 }
 
