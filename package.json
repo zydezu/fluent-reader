@@ -1,6 +1,6 @@
 {
   "name": "fluent-reader",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "description": "Modern desktop RSS reader",
   "main": "./dist/electron.js",
   "scripts": {
@@ -25,7 +25,7 @@
     "@types/react": "^16.9.35",
     "@types/react-dom": "^16.9.8",
     "@types/react-redux": "^7.1.9",
-    "electron": "^43.1.1",
+    "electron": "^44.1.1",
     "electron-builder": "^26.15.3",
     "electron-react-devtools": "^0.5.3",
     "electron-store": "^5.2.0",
