@@ -6,6 +6,7 @@ import { SourceGroup } from "../schema-types"
 import { SourceState, RSSSource } from "../scripts/models/source"
 import { ALL } from "../scripts/models/feed"
 import { AnimationClassNames, Stack, FocusZone } from "@fluentui/react"
+import { proxifyIcon } from "./utils/proxied-image"
 
 export type MenuProps = {
     status: boolean
@@ -104,7 +105,7 @@ export class Menu extends React.Component<MenuProps> {
         style: { width: 16 },
         imageProps: {
             style: { width: "100%" },
-            src: url,
+            src: proxifyIcon(url),
         },
     })
 

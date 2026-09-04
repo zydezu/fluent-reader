@@ -2,6 +2,7 @@ import * as React from "react"
 import Time from "../utils/time"
 import { RSSSource } from "../../scripts/models/source"
 import { RSSItem } from "../../scripts/models/item"
+import { proxifyIcon } from "../utils/proxied-image"
 
 type CardInfoProps = {
     source: RSSSource
@@ -13,7 +14,11 @@ type CardInfoProps = {
 const CardInfo: React.FunctionComponent<CardInfoProps> = props => (
     <p className="info">
         {props.source.iconurl ? (
-            <img loading="lazy" decoding="async" src={props.source.iconurl} />
+            <img
+                loading="lazy"
+                decoding="async"
+                src={proxifyIcon(props.source.iconurl)}
+            />
         ) : null}
         <span className="name">
             {props.source.name}

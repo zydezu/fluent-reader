@@ -1,5 +1,6 @@
 import * as React from "react"
 import intl from "react-intl-universal"
+import { proxifyIcon } from "../utils/proxied-image"
 import {
     Label,
     DefaultButton,
@@ -148,7 +149,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             minWidth: 16,
             maxWidth: 16,
             onRender: (s: RSSSource) =>
-                s.iconurl && <img src={s.iconurl} className="favicon" />,
+                s.iconurl && <img src={proxifyIcon(s.iconurl)} className="favicon" />,
         },
         {
             key: "name",

@@ -19,6 +19,7 @@ import {
 } from "../scripts/models/source"
 import { shareSubmenu } from "./context-menu"
 import { platformCtrl, decodeFetchResponse } from "../scripts/utils"
+import { proxifyIcon } from "./utils/proxied-image"
 
 const FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 17, 18, 19, 20]
 
@@ -389,7 +390,9 @@ class Article extends React.Component<ArticleProps, ArticleState> {
                                 this.props.source.iconurl && (
                                     <img
                                         className="favicon"
-                                        src={this.props.source.iconurl}
+                                        src={proxifyIcon(
+                                            this.props.source.iconurl
+                                        )}
                                     />
                                 )
                             ) : (

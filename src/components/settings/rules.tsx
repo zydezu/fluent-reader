@@ -1,5 +1,6 @@
 import * as React from "react"
 import intl from "react-intl-universal"
+import { proxifyIcon } from "../utils/proxied-image"
 import { SourceState, RSSSource } from "../../scripts/models/source"
 import {
     Stack,
@@ -179,7 +180,7 @@ class RulesTab extends React.Component<RulesTabProps, RulesTabState> {
     onRenderSourceOption = (option: IDropdownOption) => (
         <div>
             {option.data && option.data.icon && (
-                <img src={option.data.icon} className="favicon dropdown" />
+                <img src={proxifyIcon(option.data.icon)} className="favicon dropdown" />
             )}
             <span>{option.text}</span>
         </div>

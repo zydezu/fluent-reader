@@ -1,5 +1,6 @@
 import * as React from "react"
 import intl from "react-intl-universal"
+import { proxifyIcon } from "../utils/proxied-image"
 import { SourceGroup } from "../../schema-types"
 import { SourceState, RSSSource } from "../../scripts/models/source"
 import {
@@ -135,7 +136,7 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                                 this.props.sources[sid].iconurl && (
                                     <img
                                         key={sid}
-                                        src={this.props.sources[sid].iconurl}
+                                        src={proxifyIcon(this.props.sources[sid].iconurl)}
                                         className="favicon"
                                     />
                                 )
@@ -145,7 +146,7 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                     this.props.sources[g.sids[0]] &&
                     this.props.sources[g.sids[0]].iconurl && (
                         <img
-                            src={this.props.sources[g.sids[0]].iconurl}
+                            src={proxifyIcon(this.props.sources[g.sids[0]].iconurl)}
                             className="favicon"
                         />
                     )
@@ -199,7 +200,7 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
             minWidth: 16,
             maxWidth: 16,
             onRender: (s: RSSSource) =>
-                s.iconurl && <img src={s.iconurl} className="favicon" />,
+                s.iconurl && <img src={proxifyIcon(s.iconurl)} className="favicon" />,
         },
         {
             key: "name",

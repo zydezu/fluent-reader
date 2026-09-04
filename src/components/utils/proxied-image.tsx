@@ -76,6 +76,12 @@ const photonResize = (src: string, width: number, height: number): string => {
     return out.toString()
 }
 
+// can you believe we need to proxy favicons these days too
+export const proxifyIcon = (url: string): string => {
+    if (!url || url.startsWith("data:")) return url
+    return `${IMAGE_PROXY}${encodeURIComponent(url)}&w=64&h=64&fit=inside&output=png`
+}
+
 const buildProxySrc = (src: string, resize: Resize) => {
     const { width, height } = scaledSize(resize)
     const photon = photonResize(src, width, height)

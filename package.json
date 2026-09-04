@@ -1,6 +1,6 @@
 {
   "name": "fluent-reader",
-  "version": "1.6.5",
+  "version": "1.7.0",
   "description": "Modern desktop RSS reader",
   "main": "./dist/electron.js",
   "scripts": {
