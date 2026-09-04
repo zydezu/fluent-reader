@@ -13,7 +13,8 @@
 <body>
     <div id="main"></div>
     <script integrity="sha256-Dz/X/wfAzN+1HPQgnqGKUx45bv/e3JR1PmRhX/o91pQ=" src="article.js"></script>
-    <!-- Run "cat article.js | openssl dgst -sha256 -binary | openssl enc -base64 -A" for hash -->
+    <!-- integrity hashes above (and in the CSP meta tag) are regenerated automatically by
+         `npm run build` / build/update-article-csp.js - don't hand-edit them -->
 </body>
 
 </html>

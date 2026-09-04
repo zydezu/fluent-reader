@@ -4,7 +4,7 @@
   "description": "Modern desktop RSS reader",
   "main": "./dist/electron.js",
   "scripts": {
-    "build": "webpack --config ./webpack.config.js",
+    "build": "webpack --config ./webpack.config.js && node build/update-article-csp.js",
     "electron": "electron ./dist/electron.js",
     "start": "npm run build && npm run electron",
     "format": "prettier --write .",
