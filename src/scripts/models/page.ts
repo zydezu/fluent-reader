@@ -92,10 +92,11 @@ export function selectAllArticles(init = false): AppThunk {
 export function selectSources(
     sids: number[],
     menuKey: string,
-    title: string
+    title: string,
+    force = false
 ): AppThunk {
     return (dispatch, getState) => {
-        if (getState().app.menuKey !== menuKey) {
+        if (force || getState().app.menuKey !== menuKey) {
             dispatch({
                 type: SELECT_PAGE,
                 pageType: PageType.Sources,
@@ -107,6 +108,29 @@ export function selectSources(
                 init: true,
             } as PageActionTypes)
         }
+    }
+}
+
+// Re-open whichever feed page was last selected
+export function reselectPage(): AppThunk {
+    return (dispatch, getState) => {
+        const state = getState()
+        const menuKey = state.app.menuKey
+        const [type, index] = menuKey ? menuKey.split("-") : []
+        if (type === "g") {
+            const group = state.groups[parseInt(index)]
+            if (group && group.sids.length > 0) {
+                dispatch(selectSources(group.sids, menuKey, group.name, true))
+                return
+            }
+        } else if (type === "s") {
+            const source = state.sources[parseInt(index)]
+            if (source && !source.hidden) {
+                dispatch(selectSources([source.sid], menuKey, source.name, true))
+                return
+            }
+        }
+        dispatch(selectAllArticles(true))
     }
 }
 
@@ -333,8 +357,8 @@ export function pageReducer(
                         ...state,
                         itemId:
                             action.feed._id === state.feedId &&
-                            action.items.filter(i => i._id === state.itemId)
-                                .length === 0
+                                action.items.filter(i => i._id === state.itemId)
+                                    .length === 0
                                 ? null
                                 : state.itemId,
                     }

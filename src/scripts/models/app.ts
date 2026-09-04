@@ -30,6 +30,7 @@ import {
     SELECT_PAGE,
     PageType,
     selectAllArticles,
+    reselectPage,
     showItemFromId,
 } from "./page"
 import { getCurrentLocale, setThemeDefaultFont } from "../settings"
@@ -290,7 +291,7 @@ export function exitSettings(): AppThunk<Promise<void>> {
         if (!getState().app.settings.saving) {
             if (getState().app.settings.changed) {
                 dispatch(saveSettings())
-                dispatch(selectAllArticles(true))
+                dispatch(reselectPage())
                 await dispatch(initFeeds(true))
                 dispatch(toggleSettings(false))
                 freeMemory()
