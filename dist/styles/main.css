@@ -60,14 +60,14 @@
     background-color: var(--neutralLighterAltOpacity);
     backdrop-filter: var(--blur);
     box-shadow: 5px 0 25px #0004;
-    transition: clip-path var(--transition-timing) 0.367s,
+    transition: transform var(--transition-timing) 0.367s,
         opacity cubic-bezier(0, 0, 0.2, 1) 0.367s;
-    clip-path: inset(0 100% 0 0);
+    transform: translateX(-100%);
     opacity: 0;
 }
 
 .menu-container.show .menu {
-    clip-path: inset(0 -50px 0 0);
+    transform: none;
     opacity: 1;
 }
 
@@ -585,6 +585,10 @@ body.darwin .list-main .article-search {
     .menu-container .menu {
         background-color: var(--neutralLight);
         box-shadow: none;
+        transition: clip-path var(--transition-timing) 0.367s,
+            opacity cubic-bezier(0, 0, 0.2, 1) 0.367s;
+        transform: none;
+        clip-path: inset(0 100% 0 0);
     }
 
     .menu-container.show .menu {
