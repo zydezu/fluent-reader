@@ -1,43 +1,56 @@
-appId: DevHYLiu.FluentReader
-buildVersion: 29
+appId: me.hyliu.fluent-reader-mas
+buildVersion: 34
 productName: Fluent Reader
-copyright: Copyright © 2026 Haoyuan Liu
+copyright: Copyright © 2020 Haoyuan Liu
 files:
-  - "./dist/**/*"
-  - "!./dist/fonts.vbs"
-  - "!**/*.js.map"
+    - "./dist/**/*"
+    - "!./dist/fonts.vbs"
+    - "!**/*.js.map"
+    - "!node_modules/better-sqlite3/prebuilds/linux*.node"
+    - "!node_modules/better-sqlite3/prebuilds/win32-*.node"
 asarUnpack:
-  - "./dist/fontlist"
+    - "./dist/fontlist"
+    - "node_modules/better-sqlite3/**/*"
+forceCodeSigning: true
 directories:
-  output: "./bin/${platform}/${arch}/"
+    output: "./bin/${platform}/${arch}/"
 mac:
-  darkModeSupport: true
-  target:
-    - dmg
-  category: public.app-category.news
-  electronLanguages:
-    - zh_CN
-    - zh_TW
-    - en
-    - fr
-    - es
-    - de
-    - tr
-    - ja
-    - sv
-    - uk
-    - it
-    - nl
-    - ko
-    - ru
-    - pt_BR
-    - pt_PT
-    - cs
-  minimumSystemVersion: 10.15.0
+    extendInfo:
+        ElectronTeamID: P2CG8QD3BP
+    # Both builds contain both prebuilds; better-sqlite3 selects process.arch.
+    x64ArchFiles: "Contents/Resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/darwin-*.node"
+    darkModeSupport: true
+    target:
+        - dmg
+    category: public.app-category.news
+    electronLanguages:
+        - zh_CN
+        - zh_TW
+        - en
+        - fr
+        - es
+        - de
+        - tr
+        - ja
+        - sv
+        - uk
+        - it
+        - nl
+        - ko
+        - ru
+        - pt_BR
+        - pt_PT
+        - cs
+        - pl
+    minimumSystemVersion: 13.0.0
 mas:
-  entitlements: build/entitlements.mas.plist
-  entitlementsInherit: build/entitlements.mas.inherit.plist
-  provisioningProfile: build/embedded.provisionprofile
-  hardenedRuntime: false
-  gatekeeperAssess: false
-  asarUnpack: []
+    identity: "Haoyuan Liu (P2CG8QD3BP)"
+    artifactName: "${productName}-mac_store.pkg"
+    entitlements: build/entitlements.mas.plist
+    entitlementsInherit: build/entitlements.mas.inherit.plist
+    entitlementsLoginHelper: build/entitlements.mas.loginhelper.plist
+    # Preserve the entitlements used by the previous manual signing flow.
+    # Automatically added identity entitlements require a matching profile.
+    preAutoEntitlements: false
+    hardenedRuntime: false
+    gatekeeperAssess: false

@@ -1,62 +1,21 @@
 import { ipcMain, shell, dialog, app, session, clipboard } from "electron"
-import path = require("path")
-import { ElectronBlocker } from "@ghostery/adblocker-electron"
 import { WindowManager } from "./window"
-import fs = require("fs")
-import { ImageCallbackTypes, TouchBarTexts } from "../schema-types"
+import * as fs from "node:fs"
+import { ImageCallbackTypes, StoredRules, TouchBarTexts } from "../schema-types"
 import { initMainTouchBar } from "./touchbar"
-import fontList = require("font-list")
-import { version as repoVersion } from "../../package.json"
+import * as fontList from "font-list"
 
-// The built dist/ output has no package.json of its own, so outside of a
-// packaged app.asar (which electron-builder generates one for),
-// app.getVersion() falls back to reporting Electron's own runtime version
-// instead of the app's version.
-export const getAppVersion = () =>
-    app.isPackaged ? app.getVersion() : repoVersion
-
-const adblockerSessions = new Set<Electron.Session>()
-let adblocker: ElectronBlocker | null = null
-
-function enableAdblockerInSession(s: Electron.Session) {
-    if (!adblocker || adblockerSessions.has(s)) return
-    try {
-        adblocker.enableBlockingInSession(s)
-        adblockerSessions.add(s)
-    } catch (e) {
-        console.error("Failed to enable adblocker in session", e)
+const webviewInputFocused = `(() => {
+    let element = document.activeElement
+    while (element?.shadowRoot?.activeElement) {
+        element = element.shadowRoot.activeElement
     }
-}
-
-async function initAdblocker() {
-    try {
-        const { adsAndTrackingLists } = require("@ghostery/adblocker")
-        adblocker = await ElectronBlocker.fromLists(
-            fetch as any,
-            adsAndTrackingLists,
-            { loadCosmeticFilters: false },
-            {
-                path: path.join(
-                    String(app.getPath("userData")),
-                    "adblocker-engine.bin"
-                ),
-                read: fs.promises.readFile,
-                write: fs.promises.writeFile,
-            }
-        )
-        enableAdblockerInSession(session.defaultSession)
-        try {
-            enableAdblockerInSession(session.fromPartition("sandbox"))
-        } catch (e) {
-            console.error("adblocker sandbox session", e)
-        }
-    } catch (e) {
-        console.error("Adblocker init failed", e)
-    }
-}
+    return !!element && (
+        element.matches("input, textarea, select, iframe, frame") || element.isContentEditable
+    )
+})()`
 
 export function setUtilsListeners(manager: WindowManager) {
-    initAdblocker()
     async function openExternal(url: string, background = false) {
         if (url.startsWith("https://") || url.startsWith("http://")) {
             if (background && process.platform === "darwin") {
@@ -72,7 +31,6 @@ export function setUtilsListeners(manager: WindowManager) {
     }
 
     app.on("web-contents-created", (_, contents) => {
-        enableAdblockerInSession(contents.session)
         contents.setWindowOpenHandler(details => {
             if (contents.getType() === "webview")
                 openExternal(
@@ -90,7 +48,7 @@ export function setUtilsListeners(manager: WindowManager) {
     })
 
     ipcMain.on("get-version", event => {
-        event.returnValue = getAppVersion()
+        event.returnValue = app.getVersion()
     })
 
     ipcMain.handle("open-external", (_, url: string, background: boolean) => {
@@ -194,18 +152,6 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     )
 
-    ipcMain.handle("fetch-image-bytes", async (_, url: string) => {
-        // Fetched from the main process so
-        // the renderer can build a Blob for canvas resizing without
-        // hitting cross-origin canvas-tainting restrictions.
-        const response = await fetch(url)
-        if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.status}`)
-        }
-        const buffer = await response.arrayBuffer()
-        return { bytes: new Uint8Array(buffer), type: response.headers.get("content-type") }
-    })
-
     ipcMain.handle("get-cache", async () => {
         return await session.defaultSession.getCacheSize()
     })
@@ -215,7 +161,6 @@ export function setUtilsListeners(manager: WindowManager) {
     })
 
     app.on("web-contents-created", (_, contents) => {
-        enableAdblockerInSession(contents.session)
         if (contents.getType() === "webview") {
             contents.on(
                 "did-fail-load",
@@ -280,7 +225,7 @@ export function setUtilsListeners(manager: WindowManager) {
                             `new Promise(resolve => {
                         const dismiss = () => {
                             document.removeEventListener("mousedown", dismiss)
-                            document.removeEventListener("scroll", dismiss)
+                            document.removeEventListener("scroll", dismiss)                            
                             resolve()
                         }
                         document.addEventListener("mousedown", dismiss)
@@ -296,10 +241,34 @@ export function setUtilsListeners(manager: WindowManager) {
                         })
                 }
             })
-            contents.on("before-input-event", (_, input) => {
-                if (manager.hasWindow()) {
-                    let contents = manager.mainWindow.webContents
-                    contents.send("webview-keydown", input)
+            contents.on("before-input-event", async (_, input) => {
+                if (input.type !== "keyDown" || !manager.hasWindow()) return
+                const mainWindow = manager.mainWindow
+                const url = contents.getURL()
+                if (url.startsWith("https://") || url.startsWith("http://")) {
+                    // Inspect the guest's focused frame, including iframe editors.
+                    // Leave the original key event alone so typing works normally.
+                    // Electron can report no focused frame for a focused webview.
+                    // An iframe host in the fallback document keeps its own keys.
+                    const frame = contents.focusedFrame || contents.mainFrame
+                    try {
+                        const inputFocused = await frame.executeJavaScript(
+                            webviewInputFocused
+                        )
+                        if (
+                            inputFocused ||
+                            contents.isDestroyed() ||
+                            frame.isDestroyed() ||
+                            contents.getURL() !== url
+                        )
+                            return
+                    } catch {
+                        // The frame may disappear while navigating or closing.
+                        return
+                    }
+                }
+                if (manager.hasWindow() && manager.mainWindow === mainWindow) {
+                    mainWindow.webContents.send("webview-keydown", input)
                 }
             })
         }
@@ -373,4 +342,27 @@ export function setUtilsListeners(manager: WindowManager) {
             disableQuoting: true,
         })
     })
+}
+
+export function transformLovefieldRules(
+    sources: Record<string, unknown>[]
+): StoredRules {
+    const storedRules: StoredRules = {}
+    for (const source of sources) {
+        const rules = source.rules as Record<string, unknown>[] | undefined
+        if (!Array.isArray(rules) || rules.length === 0) continue
+        storedRules[`source:${source.sid as number}`] = rules.map(rule => {
+            const filter = rule.filter as Record<string, unknown>
+            const actions = rule.actions as Record<string, boolean>
+            return {
+                filter: (filter?.type as number) ?? 0,
+                search: (filter?.search as string) ?? "",
+                match: rule.match as boolean,
+                actions: Object.entries(actions || {}).map(
+                    ([type, flag]) => `${type}-${flag}`
+                ),
+            }
+        })
+    }
+    return storedRules
 }

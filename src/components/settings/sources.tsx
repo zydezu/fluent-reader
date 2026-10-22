@@ -11,8 +11,6 @@ import {
     IColumn,
     SelectionMode,
     Selection,
-    IChoiceGroupOption,
-    ChoiceGroup,
     IDropdownOption,
     Dropdown,
     MessageBar,
@@ -23,6 +21,7 @@ import {
     Spinner,
     SpinnerSize,
 } from "@fluentui/react"
+import { RadioGroup, Radio } from "@fluentui/react-components"
 import {
     SourceState,
     RSSSource,
@@ -242,25 +241,6 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         })
     }
 
-    sourceOpenTargetChoices = (): IChoiceGroupOption[] => [
-        {
-            key: String(SourceOpenTarget.Local),
-            text: intl.get("sources.rssText"),
-        },
-        {
-            key: String(SourceOpenTarget.FullContent),
-            text: intl.get("article.loadFull"),
-        },
-        {
-            key: String(SourceOpenTarget.Webpage),
-            text: intl.get("sources.loadWebpage"),
-        },
-        {
-            key: String(SourceOpenTarget.External),
-            text: intl.get("openExternal"),
-        },
-    ]
-
     updateSourceName = () => {
         let newName = this.state.newSourceName.trim()
         this.props.updateSourceName(this.state.selectedSource, newName)
@@ -344,8 +324,11 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         }
     }
 
-    onOpenTargetChange = (_, option: IChoiceGroupOption) => {
-        let newTarget = parseInt(option.key) as SourceOpenTarget
+    onOpenTargetChange = (
+        _: React.ChangeEvent<HTMLInputElement>,
+        data: { value: string }
+    ) => {
+        let newTarget = parseInt(data.value) as SourceOpenTarget
         this.props.updateSourceOpenTarget(this.state.selectedSource, newTarget)
         this.setState({
             selectedSource: {
@@ -648,14 +631,27 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                             </Stack>
                         </>
                     )}
-                    <ChoiceGroup
-                        label={intl.get("sources.openTarget")}
-                        options={this.sourceOpenTargetChoices()}
-                        selectedKey={String(
-                            this.state.selectedSource.openTarget
-                        )}
-                        onChange={this.onOpenTargetChange}
-                    />
+                    <Label>{intl.get("sources.openTarget")}</Label>
+                    <RadioGroup
+                        value={String(this.state.selectedSource.openTarget)}
+                        onChange={this.onOpenTargetChange}>
+                        <Radio
+                            value={String(SourceOpenTarget.Local)}
+                            label={intl.get("sources.rssText")}
+                        />
+                        <Radio
+                            value={String(SourceOpenTarget.FullContent)}
+                            label={intl.get("article.loadFull")}
+                        />
+                        <Radio
+                            value={String(SourceOpenTarget.Webpage)}
+                            label={intl.get("sources.loadWebpage")}
+                        />
+                        <Radio
+                            value={String(SourceOpenTarget.External)}
+                            label={intl.get("openExternal")}
+                        />
+                    </RadioGroup>
                     <Stack horizontal verticalAlign="baseline">
                         <Stack.Item grow>
                             <Label>{intl.get("sources.hidden")}</Label>

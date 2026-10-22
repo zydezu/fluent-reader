@@ -1,13 +1,13 @@
 import intl from "react-intl-universal"
-import * as db from "../../db"
-import lf from "lovefield"
+import { database, itemsTable } from "../../db"
+import { and, eq, inArray, isNotNull, lte, gte } from "drizzle-orm"
 import { ServiceHooks } from "../service"
 import { ServiceConfigs, SyncService } from "../../../schema-types"
 import { createSourceGroup } from "../group"
 import { RSSSource } from "../source"
 import { domParser } from "../../utils"
 import { RSSItem } from "../item"
-import { SourceRule } from "../rule"
+import { ArticleRule, getRulesForTarget } from "../rule"
 
 export interface NextcloudConfigs extends ServiceConfigs {
     type: SyncService.Nextcloud
@@ -212,22 +212,28 @@ export const nextcloudServiceHooks: ServiceHooks = {
                     let img = dom.querySelector("img")
                     if (img && img.src) item.thumb = img.src
                 }
-                // Apply rules and sync back to the service
-                if (source.rules) SourceRule.applyAll(source.rules, item)
+                // Rule writebacks are best effort and must not block fetching.
+                ArticleRule.applyAll(
+                    getRulesForTarget(state.rules, state.groups, {
+                        type: "source",
+                        sid: source.sid,
+                    }),
+                    item
+                )
                 if (unreadItem && item.hasRead)
-                    markItems(
+                    void markItems(
                         configs,
                         item.hasRead ? "read" : "unread",
                         "POST",
                         [i.id]
-                    )
+                    ).catch(() => {})
                 if (starredItem !== Boolean(item.starred))
-                    markItems(
+                    void markItems(
                         configs,
                         item.starred ? "star" : "unstar",
                         "POST",
                         [i.id]
-                    )
+                    ).catch(() => {})
 
                 parsedItems.push(item)
             })
@@ -240,23 +246,21 @@ export const nextcloudServiceHooks: ServiceHooks = {
     markAllRead: (sids, date, before) => async (_, getState) => {
         const state = getState()
         const configs = state.service as NextcloudConfigs
-        const predicates: lf.Predicate[] = [
-            db.items.source.in(sids),
-            db.items.hasRead.eq(false),
-            db.items.serviceRef.isNotNull(),
+        const conditions = [
+            inArray(itemsTable.source, sids),
+            eq(itemsTable.hasRead, false),
+            isNotNull(itemsTable.serviceRef),
         ]
         if (date) {
-            predicates.push(
-                before ? db.items.date.lte(date) : db.items.date.gte(date)
+            conditions.push(
+                before ? lte(itemsTable.date, date) : gte(itemsTable.date, date)
             )
         }
-        const query = lf.op.and.apply(null, predicates)
-        const rows = await db.itemsDB
-            .select(db.items.serviceRef)
-            .from(db.items)
-            .where(query)
-            .exec()
-        const refs = rows.map(row => parseInt(row["serviceRef"]))
+        const rows = await database
+            .select({ serviceRef: itemsTable.serviceRef })
+            .from(itemsTable)
+            .where(and(...conditions))
+        const refs = rows.map(row => parseInt(row.serviceRef))
         markItems(configs, "unread", "POST", refs)
     },
 

@@ -1,10 +1,10 @@
+import { SourceGroup } from "../../schema-types"
 import intl from "react-intl-universal"
-import * as db from "../db"
-import lf from "lovefield"
+import { eq, and, or, isNull, max, count } from "drizzle-orm"
+import { database, sourcesTable, itemsTable, init } from "../db"
+import { findValidDate } from "../date"
 import {
     fetchFavicon,
-    fetchYTChannelIcon,
-    htmlDecode,
     ActionStatus,
     AppThunk,
     parseRSS,
@@ -20,7 +20,12 @@ import {
     MARK_ALL_READ,
 } from "./item"
 import { saveSettings } from "./app"
-import { SourceRule } from "./rule"
+import {
+    ArticleRule,
+    getRulesForTarget,
+    initRules,
+    updateRulesForTarget,
+} from "./rule"
 import { fixBrokenGroups } from "./group"
 
 export const enum SourceOpenTarget {
@@ -39,7 +44,6 @@ export const enum SourceTextDirection {
 export class RSSSource {
     sid: number
     url: string
-    originUrl?: string
     iconurl?: string
     name: string
     openTarget: SourceOpenTarget
@@ -47,10 +51,8 @@ export class RSSSource {
     lastFetched: Date
     serviceRef?: string
     fetchFrequency: number // in minutes
-    rules?: SourceRule[]
     textDir: SourceTextDirection
     hidden: boolean
-    imageOnly: boolean
 
     constructor(url: string, name: string = null) {
         this.url = url
@@ -60,72 +62,91 @@ export class RSSSource {
         this.fetchFrequency = 0
         this.textDir = SourceTextDirection.LTR
         this.hidden = false
-        this.imageOnly = false
     }
 
     static async fetchMetaData(source: RSSSource) {
         let feed = await parseRSS(source.url)
-        source.originUrl = feed.link
         if (!source.name) {
-            if (feed.title) source.name = htmlDecode(feed.title.trim())
+            if (feed.title) source.name = feed.title.trim()
             source.name = source.name || intl.get("sources.untitled")
         }
         return feed
     }
 
     private static async checkItem(
-        source: RSSSource,
-        item: MyParserItem
+        i: RSSItem,
+        item: MyParserItem,
+        rules: ArticleRule[],
+        hasPublicationDate: boolean
     ): Promise<RSSItem> {
-        let i = new RSSItem(item, source)
-        // Prefer matching by link (stable across edits) over title+date:
-        // some feeds (e.g. MacRumors) bump pubDate when an article is
-        // edited, which previously caused the same article to be
-        // reinserted as a "new" item.
-        const predicate = i.link
-            ? lf.op.and(db.items.source.eq(i.source), db.items.link.eq(i.link))
-            : lf.op.and(
-                  db.items.source.eq(i.source),
-                  db.items.title.eq(i.title),
-                  db.items.date.eq(i.date)
+        const legacyMatch = and(
+            eq(itemsTable.title, i.title),
+            eq(itemsTable.link, i.link),
+            hasPublicationDate ? eq(itemsTable.date, i.date) : undefined
+        )
+        // Migrated articles have no GUID. Use the fallback match when either side
+        // lacks an identifier, but distinguish different known GUIDs.
+        const identityMatch = i.guid
+            ? or(
+                  eq(itemsTable.guid, i.guid),
+                  and(isNull(itemsTable.guid), legacyMatch)
               )
-        const items = (await db.itemsDB
-            .select()
-            .from(db.items)
-            .where(predicate)
+            : legacyMatch
+        const existing = await database
+            .select({ _id: itemsTable._id })
+            .from(itemsTable)
+            .where(and(eq(itemsTable.source, i.source), identityMatch))
             .limit(1)
-            .exec()) as RSSItem[]
-        if (items.length === 0) {
+        if (existing.length === 0) {
             RSSItem.parseContent(i, item)
-            if (source.rules) SourceRule.applyAll(source.rules, i)
+            ArticleRule.applyAll(rules, i)
             return i
         } else {
             return null
         }
     }
 
-    static checkItems(
+    static async checkItems(
         source: RSSSource,
-        items: MyParserItem[]
+        items: MyParserItem[],
+        rules: ArticleRule[]
     ): Promise<RSSItem[]> {
-        return new Promise<RSSItem[]>((resolve, reject) => {
-            let p = new Array<Promise<RSSItem>>()
-            for (let item of items) {
-                p.push(this.checkItem(source, item))
+        const seenGuids = new Set<string>()
+        const seenFallbacks = new Map<string, Set<number>>()
+        const pending: Promise<RSSItem>[] = []
+        for (const item of items) {
+            // A display date synthesized from fetch time is not a stable identity.
+            const hasPublicationDate =
+                findValidDate(item.isoDate, item.pubDate) !== undefined
+            const parsed = new RSSItem(item, source)
+            // Database checks cannot see other pending inserts in this batch.
+            if (parsed.guid) {
+                if (seenGuids.has(parsed.guid)) continue
+                seenGuids.add(parsed.guid)
+            } else {
+                const identity = JSON.stringify([parsed.title, parsed.link])
+                const dates = seenFallbacks.get(identity)
+                if (dates) {
+                    if (!hasPublicationDate || dates.has(parsed.date.getTime()))
+                        continue
+                    dates.add(parsed.date.getTime())
+                } else {
+                    seenFallbacks.set(
+                        identity,
+                        new Set([parsed.date.getTime()])
+                    )
+                }
             }
-            Promise.all(p)
-                .then(values => {
-                    resolve(values.filter(v => v != null))
-                })
-                .catch(e => {
-                    reject(e)
-                })
-        })
+            pending.push(
+                this.checkItem(parsed, item, rules, hasPublicationDate)
+            )
+        }
+        return (await Promise.all(pending)).filter(item => item != null)
     }
 
-    static async fetchItems(source: RSSSource) {
+    static async fetchItems(source: RSSSource, rules: ArticleRule[]) {
         let feed = await parseRSS(source.url)
-        return await this.checkItems(source, feed.items)
+        return await this.checkItems(source, feed.items, rules)
     }
 }
 
@@ -153,6 +174,7 @@ interface AddSourceAction {
     status: ActionStatus
     batch: boolean
     source?: RSSSource
+    group?: SourceGroup
     err?
 }
 
@@ -209,45 +231,17 @@ export function initSourcesFailure(err): SourceActionTypes {
 }
 
 async function unreadCount(sources: SourceState): Promise<SourceState> {
-    const allSids = Object.keys(sources).map(Number)
-    const imageOnlySids = allSids.filter(sid => sources[sid].imageOnly)
-    const normalSids = allSids.filter(sid => !sources[sid].imageOnly)
-    const queries: Promise<{ [key: string]: any }[]>[] = []
-    if (normalSids.length > 0) {
-        queries.push(
-            db.itemsDB
-                .select(db.items.source, lf.fn.count(db.items._id))
-                .from(db.items)
-                .where(
-                    lf.op.and(
-                        db.items.hasRead.eq(false),
-                        db.items.source.in(normalSids)
-                    )
-                )
-                .groupBy(db.items.source)
-                .exec() as Promise<{ [key: string]: any }[]>
-        )
-    }
-    if (imageOnlySids.length > 0) {
-        queries.push(
-            db.itemsDB
-                .select(db.items.source, lf.fn.count(db.items._id))
-                .from(db.items)
-                .where(
-                    lf.op.and(
-                        db.items.hasRead.eq(false),
-                        db.items.source.in(imageOnlySids),
-                        db.items.thumb.isNotNull()
-                    )
-                )
-                .groupBy(db.items.source)
-                .exec() as Promise<{ [key: string]: any }[]>
-        )
-    }
-    const results = await Promise.all(queries)
-    for (const rows of results) {
-        for (let row of rows) {
-            sources[row["source"]].unreadCount = row["COUNT(_id)"]
+    const rows = await database
+        .select({
+            source: itemsTable.source,
+            count: count(itemsTable._id),
+        })
+        .from(itemsTable)
+        .where(eq(itemsTable.hasRead, false))
+        .groupBy(itemsTable.source)
+    for (const row of rows) {
+        if (sources[row.source]) {
+            sources[row.source].unreadCount = row.count
         }
     }
     return sources
@@ -272,15 +266,14 @@ export function updateUnreadCounts(): AppThunk<Promise<void>> {
 export function initSources(): AppThunk<Promise<void>> {
     return async dispatch => {
         dispatch(initSourcesRequest())
-        await db.init()
-        const sources = (await db.sourcesDB
-            .select()
-            .from(db.sources)
-            .exec()) as RSSSource[]
+        await init()
+        const sourcesData = await database.select().from(sourcesTable)
+        dispatch(initRules())
         const state: SourceState = {}
-        for (let source of sources) {
-            source.unreadCount = 0
-            state[source.sid] = source
+        for (const source of sourcesData) {
+            const rssSource = source as unknown as RSSSource
+            rssSource.unreadCount = 0
+            state[source.sid] = rssSource
         }
         await unreadCount(state)
         dispatch(fixBrokenGroups(state))
@@ -305,6 +298,7 @@ export function addSourceSuccess(
         batch: batch,
         status: ActionStatus.Success,
         source: source,
+        group: new SourceGroup(window.settings.allocateGroupId(), [source.sid]),
     }
 }
 
@@ -319,22 +313,45 @@ export function addSourceFailure(err, batch: boolean): SourceActionTypes {
 
 let insertPromises = Promise.resolve()
 export function insertSource(source: RSSSource): AppThunk<Promise<RSSSource>> {
-    return (_, getState) => {
+    return () => {
         return new Promise((resolve, reject) => {
             insertPromises = insertPromises.then(async () => {
-                let sids = Object.values(getState().sources).map(s => s.sid)
-                source.sid = Math.max(...sids, -1) + 1
-                const row = db.sources.createRow(source)
                 try {
-                    const inserted = (await db.sourcesDB
-                        .insert()
-                        .into(db.sources)
-                        .values([row])
-                        .exec()) as RSSSource[]
-                    resolve(inserted[0])
+                    const result = await database
+                        .select({ maxSid: max(sourcesTable.sid) })
+                        .from(sourcesTable)
+                    source.sid = (result[0]?.maxSid ?? -1) + 1
+                    await database.insert(sourcesTable).values({
+                        sid: source.sid,
+                        url: source.url,
+                        iconurl: source.iconurl || null,
+                        name: source.name,
+                        openTarget: source.openTarget,
+                        lastFetched: source.lastFetched,
+                        serviceRef: source.serviceRef || null,
+                        fetchFrequency: source.fetchFrequency || 0,
+                        textDir: source.textDir || 0,
+                        hidden: source.hidden || false,
+                    })
+                    resolve(source)
                 } catch (err) {
-                    if (err.code === 201) reject(intl.get("sources.exist"))
-                    else reject(err)
+                    // Drizzle wraps the original IPC rejection in its cause.
+                    let cause = err
+                    while (
+                        cause instanceof Error &&
+                        cause.cause instanceof Error
+                    )
+                        cause = cause.cause
+                    if (
+                        cause instanceof Error &&
+                        cause.message.includes(
+                            "UNIQUE constraint failed: sources.url"
+                        )
+                    ) {
+                        reject(intl.get("sources.exist"))
+                    } else {
+                        reject(err)
+                    }
                 }
             })
         })
@@ -354,12 +371,22 @@ export function addSource(
             try {
                 const feed = await RSSSource.fetchMetaData(source)
                 const inserted = await dispatch(insertSource(source))
-                inserted.unreadCount = feed.items.length
+                const state = getState()
+                const items = await RSSSource.checkItems(
+                    inserted,
+                    feed.items,
+                    getRulesForTarget(state.rules, state.groups, {
+                        type: "source",
+                        sid: inserted.sid,
+                    })
+                )
+                await insertItems(items)
+                inserted.unreadCount = items.filter(
+                    item => !item.hasRead
+                ).length
                 dispatch(addSourceSuccess(inserted, batch))
                 window.settings.saveGroups(getState().groups)
                 dispatch(updateFavicon([inserted.sid]))
-                const items = await RSSSource.checkItems(inserted, feed.items)
-                await insertItems(items)
                 return inserted.sid
             } catch (e) {
                 dispatch(addSourceFailure(e, batch))
@@ -386,14 +413,25 @@ export function updateSourceDone(source: RSSSource): SourceActionTypes {
 
 export function updateSource(source: RSSSource): AppThunk<Promise<void>> {
     return async dispatch => {
-        let sourceCopy = { ...source }
-        delete sourceCopy.unreadCount
-        const row = db.sources.createRow(sourceCopy)
-        await db.sourcesDB
-            .insertOrReplace()
-            .into(db.sources)
-            .values([row])
-            .exec()
+        const dbValues = {
+            sid: source.sid,
+            url: source.url,
+            iconurl: source.iconurl || null,
+            name: source.name,
+            openTarget: source.openTarget,
+            lastFetched: source.lastFetched,
+            serviceRef: source.serviceRef || null,
+            fetchFrequency: source.fetchFrequency || 0,
+            textDir: source.textDir || 0,
+            hidden: source.hidden || false,
+        }
+        await database
+            .insert(sourcesTable)
+            .values(dbValues)
+            .onConflictDoUpdate({
+                target: sourcesTable.sid,
+                set: dbValues,
+            })
         dispatch(updateSourceDone(source))
     }
 }
@@ -412,16 +450,15 @@ export function deleteSource(
     return async (dispatch, getState) => {
         if (!batch) dispatch(saveSettings())
         try {
-            await db.itemsDB
-                .delete()
-                .from(db.items)
-                .where(db.items.source.eq(source.sid))
-                .exec()
-            await db.sourcesDB
-                .delete()
-                .from(db.sources)
-                .where(db.sources.sid.eq(source.sid))
-                .exec()
+            await dispatch(
+                updateRulesForTarget({ type: "source", sid: source.sid }, [])
+            )
+            await database
+                .delete(itemsTable)
+                .where(eq(itemsTable.source, source.sid))
+            await database
+                .delete(sourcesTable)
+                .where(eq(sourcesTable.sid, source.sid))
             dispatch(deleteSourceDone(source))
             window.settings.saveGroups(getState().groups)
         } catch (err) {
@@ -469,9 +506,9 @@ export function updateFavicon(
             sids = sids.filter(sid => sid in initSources)
         }
         const promises = sids.map(async sid => {
-            const { originUrl, url }= initSources[sid]
+            const url = initSources[sid].url
+            let favicon = (await fetchFavicon(url)) || ""
             const source = getState().sources[sid]
-            let favicon = (await fetchFavicon(originUrl || url)) || ""
             if (
                 source &&
                 source.url === url &&
