@@ -4,7 +4,7 @@
   "description": "Modern desktop RSS reader",
   "main": "./dist/electron.js",
   "scripts": {
-    "build": "webpack --config ./webpack.config.js",
+    "build": "node --max-old-space-size=4096 node_modules/webpack/bin/webpack.js --config ./webpack.config.js",
     "electron": "electron ./dist/electron.js",
     "start": "npm run build && npm run electron",
     "format": "prettier --write --list-different .",
