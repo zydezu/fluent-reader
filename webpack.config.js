@@ -6,6 +6,12 @@ module.exports = [
         mode: "production",
         entry: "./src/electron.ts",
         target: "electron-main",
+        externals: {
+            "@ghostery/adblocker-electron": "commonjs @ghostery/adblocker-electron",
+            "@ghostery/adblocker": "commonjs @ghostery/adblocker",
+            "@ghostery/adblocker-electron-preload":
+                "commonjs @ghostery/adblocker-electron-preload",
+        },
         module: {
             rules: [
                 {

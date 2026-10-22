@@ -1,4 +1,6 @@
 import { ipcMain, shell, dialog, app, session, clipboard } from "electron"
+import path = require("path")
+import { ElectronBlocker } from "@ghostery/adblocker-electron"
 import { WindowManager } from "./window"
 import fs = require("fs")
 import { ImageCallbackTypes, TouchBarTexts } from "../schema-types"
@@ -13,7 +15,48 @@ import { version as repoVersion } from "../../package.json"
 export const getAppVersion = () =>
     app.isPackaged ? app.getVersion() : repoVersion
 
+const adblockerSessions = new Set<Electron.Session>()
+let adblocker: ElectronBlocker | null = null
+
+function enableAdblockerInSession(s: Electron.Session) {
+    if (!adblocker || adblockerSessions.has(s)) return
+    try {
+        adblocker.enableBlockingInSession(s)
+        adblockerSessions.add(s)
+    } catch (e) {
+        console.error("Failed to enable adblocker in session", e)
+    }
+}
+
+async function initAdblocker() {
+    try {
+        const { adsAndTrackingLists } = require("@ghostery/adblocker")
+        adblocker = await ElectronBlocker.fromLists(
+            fetch as any,
+            adsAndTrackingLists,
+            { loadCosmeticFilters: false },
+            {
+                path: path.join(
+                    String(app.getPath("userData")),
+                    "adblocker-engine.bin"
+                ),
+                read: fs.promises.readFile,
+                write: fs.promises.writeFile,
+            }
+        )
+        enableAdblockerInSession(session.defaultSession)
+        try {
+            enableAdblockerInSession(session.fromPartition("sandbox"))
+        } catch (e) {
+            console.error("adblocker sandbox session", e)
+        }
+    } catch (e) {
+        console.error("Adblocker init failed", e)
+    }
+}
+
 export function setUtilsListeners(manager: WindowManager) {
+    initAdblocker()
     async function openExternal(url: string, background = false) {
         if (url.startsWith("https://") || url.startsWith("http://")) {
             if (background && process.platform === "darwin") {
@@ -29,6 +72,7 @@ export function setUtilsListeners(manager: WindowManager) {
     }
 
     app.on("web-contents-created", (_, contents) => {
+        enableAdblockerInSession(contents.session)
         contents.setWindowOpenHandler(details => {
             if (contents.getType() === "webview")
                 openExternal(
@@ -171,6 +215,7 @@ export function setUtilsListeners(manager: WindowManager) {
     })
 
     app.on("web-contents-created", (_, contents) => {
+        enableAdblockerInSession(contents.session)
         if (contents.getType() === "webview") {
             contents.on(
                 "did-fail-load",
