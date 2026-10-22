@@ -135,7 +135,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
 
     groupIndexOf = (sid: number): number => {
         const group = this.groupOf(sid)
-        return group && group.isMultiple ? group.index : UNGROUPED_KEY
+        return group && group.isMultiple ? group.gid : UNGROUPED_KEY
     }
 
     columns = (): IColumn[] => [
@@ -148,7 +148,9 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             minWidth: 16,
             maxWidth: 16,
             onRender: (s: RSSSource) =>
-                s.iconurl && <img src={proxifyIcon(s.iconurl)} className="favicon" />,
+                s.iconurl && (
+                    <img src={proxifyIcon(s.iconurl)} className="favicon" />
+                ),
         },
         {
             key: "name",
@@ -171,7 +173,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                         className="settings-link"
                         onClick={e => {
                             e.stopPropagation()
-                            this.props.onManageGroup(group.index)
+                            this.props.onManageGroup(group.gid)
                         }}>
                         {group.name}
                     </span>
@@ -194,7 +196,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
     groupOptions = (): IDropdownOption[] =>
         this.props.groups
             .filter(g => g.isMultiple)
-            .map(g => ({ key: g.index, text: g.name }))
+            .map(g => ({ key: g.gid, text: g.name }))
 
     groupOptionsWithUngrouped = (): IDropdownOption[] => [
         { key: UNGROUPED_KEY, text: intl.get("sources.ungrouped") },
@@ -559,9 +561,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                                     </Stack.Item>
                                 )}
                                 {this.state.urlSaving && (
-                                    <Stack.Item
-                                        verticalFill
-                                        align="center">
+                                    <Stack.Item verticalFill align="center">
                                         <Spinner size={SpinnerSize.small} />
                                     </Stack.Item>
                                 )}
@@ -704,9 +704,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                         <Stack horizontal wrap verticalAlign="start">
                             <Stack.Item>
                                 <Dropdown
-                                    placeholder={intl.get(
-                                        "groups.chooseGroup"
-                                    )}
+                                    placeholder={intl.get("groups.chooseGroup")}
                                     selectedKey={this.state.bulkGroupIndex}
                                     options={this.groupOptionsWithUngrouped()}
                                     onChange={(_, option) =>

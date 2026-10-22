@@ -31,7 +31,7 @@ const rssParser = new Parser({
             "image",
             ["content:encoded", "fullContent"],
             ["media:content", "mediaContent", { keepArray: true }],
-            ["media:group", "videoMeta", {keepArray: false}],
+            ["media:group", "videoMeta", { keepArray: false }],
         ],
     },
 })
@@ -111,53 +111,59 @@ export async function parseRSS(url: string) {
 export const domParser = new DOMParser()
 
 export async function fetchYTChannelIcon(url: string) {
-    let channelId = "";
+    let channelId = ""
 
     try {
-        const parsedUrl = new URL(url);
+        const parsedUrl = new URL(url)
 
-        channelId = parsedUrl.searchParams.get("channel_id") || "";
+        channelId = parsedUrl.searchParams.get("channel_id") || ""
 
         if (!channelId) {
-            const match = parsedUrl.pathname.match(/\/channel\/(UC[\w-]+)/);
+            const match = parsedUrl.pathname.match(/\/channel\/(UC[\w-]+)/)
             if (match) {
-                channelId = match[1];
+                channelId = match[1]
             }
         }
 
         if (!channelId) {
-            return null;
+            return null
         }
 
-        const channelUrl = `https://www.youtube.com/channel/${channelId}`;
+        const channelUrl = `https://www.youtube.com/channel/${channelId}`
 
-        const result = await fetch(channelUrl, { credentials: 'omit' });
+        const result = await fetch(channelUrl, { credentials: "omit" })
         if (!result.ok) {
-            return null;
+            return null
         }
 
-        const html = await result.text();
-        const dom = new DOMParser().parseFromString(html, "text/html");
-        const links = dom.getElementsByTagName("link");
+        const html = await result.text()
+        const dom = new DOMParser().parseFromString(html, "text/html")
+        const links = dom.getElementsByTagName("link")
 
         for (let link of links) {
-            if (link.getAttribute("rel") === "image_src" && link.hasAttribute("href")) {
-                const href = link.getAttribute("href")!;
-                return href.replace("=s900", "=s16");
+            if (
+                link.getAttribute("rel") === "image_src" &&
+                link.hasAttribute("href")
+            ) {
+                const href = link.getAttribute("href")!
+                return href.replace("=s900", "=s16")
             }
         }
 
-        return null;
+        return null
     } catch (e) {
-        return null;
+        return null
     }
 }
 
 export async function fetchFavicon(url: string) {
     try {
-        const customIcon = window.settings.getIconStatus()
+        const customIcon = true
         if (customIcon) {
-            if (Url.parse(url).host === "www.youtube.com" && url.includes("channel")) {
+            if (
+                Url.parse(url).host === "www.youtube.com" &&
+                url.includes("channel")
+            ) {
                 return fetchYTChannelIcon(url)
             }
         }
@@ -177,7 +183,7 @@ export async function fetchFavicon(url: string) {
                     let parsedUrl = Url.parse(url)
                     if (href.startsWith("//")) return parsedUrl.protocol + href
                     else if (href.startsWith("/")) return url + href
-                    else if (href.startsWith("favicon")) return url + '/' + href
+                    else if (href.startsWith("favicon")) return url + "/" + href
                     else return href
                 }
             }
@@ -214,10 +220,18 @@ export function htmlDecode(input: string) {
     return doc.documentElement.textContent
 }
 
-export function parseYouTubeContent(url: string, views: string, likes: string, content: string){
+export function parseYouTubeContent(
+    url: string,
+    views: string,
+    likes: string,
+    content: string
+) {
     const video = `<iframe width="560" height="315" src="${url}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
     const views_likes = `<p style="float: left; color: #808080;"><em>${views} views</em></p><p style="float: right; color: #808080;"><em>${likes} likes</em></p>`
-    const _content = `<div style="word-break: break-all;>"<pre>${content.replace(/(?:\r\n|\r|\n)/g, '<br>')}</pre></div>`
+    const _content = `<div style="word-break: break-all;>"<pre>${content.replace(
+        /(?:\r\n|\r|\n)/g,
+        "<br>"
+    )}</pre></div>`
     return `${video}${views_likes}<br><br><br><hr />${_content}`
 }
 

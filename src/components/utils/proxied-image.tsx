@@ -16,7 +16,7 @@ const BLANK_IMAGE = (() => {
 
 // Cached in-memory so every card render doesn't need a sync IPC round trip.
 // Kept in sync with the store via setResizeMode when the setting changes.
-let resizeMode: ThumbnailResizeMode = window.settings.getThumbnailResizeMode()
+let resizeMode: ThumbnailResizeMode = ThumbnailResizeMode.Proxy
 export const setResizeMode = (mode: ThumbnailResizeMode) => {
     resizeMode = mode
 }
@@ -24,15 +24,14 @@ export const setResizeMode = (mode: ThumbnailResizeMode) => {
 // Whether a thumbnail that fails to load directly (dead link, CORS block,
 // timeout, etc.) should be retried through images.weserv.nl as a last
 // resort, rather than just staying broken.
-let errorFallbackProxy: boolean =
-    window.settings.getImageErrorFallbackProxy()
+let errorFallbackProxy: boolean = true
 export const setErrorFallbackProxy = (enabled: boolean) => {
     errorFallbackProxy = enabled
 }
 
 // Which format resized thumbnails should be requested as from the proxy -
 // its default (source) format, or WebP.
-let proxyFormat: ProxyImageFormat = window.settings.getThumbnailProxyFormat()
+let proxyFormat: ProxyImageFormat = ProxyImageFormat.Original
 export const setProxyFormat = (format: ProxyImageFormat) => {
     proxyFormat = format
 }
@@ -79,7 +78,9 @@ const photonResize = (src: string, width: number, height: number): string => {
 // can you believe we need to proxy favicons these days too
 export const proxifyIcon = (url: string): string => {
     if (!url || url.startsWith("data:")) return url
-    return `${IMAGE_PROXY}${encodeURIComponent(url)}&w=64&h=64&fit=inside&output=png`
+    return `${IMAGE_PROXY}${encodeURIComponent(
+        url
+    )}&w=64&h=64&fit=inside&output=png`
 }
 
 const buildProxySrc = (src: string, resize: Resize) => {
@@ -104,7 +105,8 @@ export const ProxiedImage: React.FunctionComponent<Props> = ({
     const mode = resize ? resizeMode : ThumbnailResizeMode.Off
 
     const [src, setSrc] = React.useState(() => {
-        if (mode === ThumbnailResizeMode.Proxy) return buildProxySrc(originalSrc, resize)
+        if (mode === ThumbnailResizeMode.Proxy)
+            return buildProxySrc(originalSrc, resize)
         if (mode === ThumbnailResizeMode.Local) return BLANK_IMAGE
         return originalSrc
     })

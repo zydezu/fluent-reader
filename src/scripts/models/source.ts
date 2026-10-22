@@ -53,6 +53,7 @@ export class RSSSource {
     fetchFrequency: number // in minutes
     textDir: SourceTextDirection
     hidden: boolean
+    imageOnly?: boolean
 
     constructor(url: string, name: string = null) {
         this.url = url
@@ -62,6 +63,7 @@ export class RSSSource {
         this.fetchFrequency = 0
         this.textDir = SourceTextDirection.LTR
         this.hidden = false
+        this.imageOnly = false
     }
 
     static async fetchMetaData(source: RSSSource) {

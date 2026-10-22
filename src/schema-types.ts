@@ -54,6 +54,17 @@ export const enum ImageCallbackTypes {
     CopyLink,
 }
 
+export const enum ThumbnailResizeMode {
+    Off,
+    Proxy,
+    Local,
+}
+
+export const enum ProxyImageFormat {
+    Original = "original",
+    WebP = "webp",
+}
+
 export const enum SyncService {
     None,
     Fever,
