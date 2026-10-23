@@ -6,6 +6,7 @@ import DefaultCard from "../cards/default-card"
 import { PrimaryButton, FocusZone } from "office-ui-fabric-react"
 import { RSSItem } from "../../scripts/models/item"
 import { List, AnimationClassNames } from "@fluentui/react"
+import { isAutoLoadMoreEnabled } from "../../scripts/settings"
 
 const CardsFeed: React.FC<FeedProps> = props => {
     const [width, setWidth] = useState(window.innerWidth)
@@ -63,16 +64,15 @@ const CardsFeed: React.FC<FeedProps> = props => {
             <div className="flex-fix" key={"f-" + index}></div>
         )
 
-    const canFocusChild = (el: HTMLElement) => {
-        if (el.id === "load-more") {
-            const container = document.getElementById("refocus")
-            const result =
-                container.scrollTop >
-                container.scrollHeight - 2 * container.offsetHeight
-            if (!result) container.scrollTop += 100
-            return result
-        } else {
-            return true
+    const canFocusChild = () => true
+
+    const handleScroll = (event: React.UIEvent<HTMLElement>) => {
+        if (!isAutoLoadMoreEnabled()) return
+        const { feed, loadMore } = props
+        if (!feed.loaded || feed.loading || feed.allLoaded) return
+        const el = event.currentTarget
+        if (el.scrollTop + el.offsetHeight > el.scrollHeight - 400) {
+            loadMore(feed)
         }
     }
 
@@ -83,6 +83,7 @@ const CardsFeed: React.FC<FeedProps> = props => {
                 id="refocus"
                 className="cards-feed-container"
                 shouldReceiveFocus={canFocusChild}
+                onScroll={handleScroll}
                 data-is-scrollable>
                 <List
                     className={AnimationClassNames.slideUpIn10}
@@ -93,16 +94,6 @@ const CardsFeed: React.FC<FeedProps> = props => {
                     ignoreScrollingState
                     usePageCache
                 />
-                {props.feed.loaded && !props.feed.allLoaded ? (
-                    <div className="load-more-wrapper">
-                        <PrimaryButton
-                            id="load-more"
-                            text={intl.get("loadMore")}
-                            disabled={props.feed.loading}
-                            onClick={() => props.loadMore(props.feed)}
-                        />
-                    </div>
-                ) : null}
                 {props.items.length === 0 && (
                     <div className="empty">{intl.get("article.empty")}</div>
                 )}

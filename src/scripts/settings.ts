@@ -23,6 +23,15 @@ export function getThemeSettings(): ThemeSettings {
     return window.settings.getThemeSettings()
 }
 
+let autoLoadMoreEnabled: boolean = window.settings.getAutoLoadMore()
+export function setAutoLoadMore(enabled: boolean) {
+    window.settings.setAutoLoadMore(enabled)
+    autoLoadMoreEnabled = enabled
+}
+export function isAutoLoadMoreEnabled(): boolean {
+    return autoLoadMoreEnabled
+}
+
 export function getCurrentLocale() {
     let locale = window.settings.getCurrentLocale()
     if (locale in locales) return locale
