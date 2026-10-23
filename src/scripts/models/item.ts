@@ -11,7 +11,7 @@ import {
     AppThunk,
     platformCtrl,
 } from "../utils"
-import { RSSSource, updateSource, updateUnreadCounts } from "./source"
+import { RSSSource, SourceState, updateSource, updateUnreadCounts } from "./source"
 import { FeedActionTypes, INIT_FEED, LOAD_MORE, dismissItems } from "./feed"
 import {
     pushNotification,
@@ -128,6 +128,7 @@ interface FetchItemsAction {
     fetchCount?: number
     items?: RSSItem[]
     itemState?: ItemState
+    sources?: SourceState
     errSource?: RSSSource
     err?
 }
@@ -177,13 +178,15 @@ export function fetchItemsRequest(fetchCount = 0): ItemActionTypes {
 
 export function fetchItemsSuccess(
     items: RSSItem[],
-    itemState: ItemState
+    itemState: ItemState,
+    sources?: SourceState
 ): ItemActionTypes {
     return {
         type: FETCH_ITEMS,
         status: ActionStatus.Success,
         items: items,
         itemState: itemState,
+        sources: sources,
     }
 }
 

@@ -408,7 +408,11 @@ export function feedReducer(
                             let items = action.items.filter(
                                 i =>
                                     feed.sids.includes(i.source) &&
-                                    FeedFilter.testItem(feed.filter, i)
+                                    FeedFilter.testItem(
+                                        feed.filter,
+                                        i,
+                                        action.sources
+                                    )
                             )
                             if (items.length > 0) {
                                 let oldItems = feed.iids.map(
