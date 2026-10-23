@@ -13,7 +13,7 @@ export const database = drizzle(
     { schema: { sourcesTable, itemsTable } }
 )
 
-const sdbSchema = lf.schema.create("sourcesDB", 3)
+const sdbSchema = lf.schema.create("sourcesDB", 4)
 sdbSchema
     .createTable("sources")
     .addColumn("sid", lf.Type.INTEGER)
@@ -69,6 +69,11 @@ async function onUpgradeSourceDB(rawDb: lf.raw.BackStore) {
     }
     if (version < 3) {
         await asNativePromise(rawDb.addTableColumn("sources", "hidden", false))
+    }
+    if (version < 4) {
+        await asNativePromise(
+            rawDb.addTableColumn("sources", "imageOnly", false)
+        )
     }
 }
 
