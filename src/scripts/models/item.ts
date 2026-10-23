@@ -1,21 +1,17 @@
-import * as db from "../db"
-import lf from "lovefield"
+import { getRulesForTarget } from "./rule"
+import { eq, and, inArray, lte, gte } from "drizzle-orm"
+import { database, itemsTable } from "../db"
+import { getValidDate } from "../date"
 import intl from "react-intl-universal"
 import type { MyParserItem } from "../utils"
 import {
     domParser,
     htmlDecode,
-    parseYouTubeContent,
     ActionStatus,
     AppThunk,
     platformCtrl,
 } from "../utils"
-import {
-    RSSSource,
-    SourceState,
-    updateSource,
-    updateUnreadCounts,
-} from "./source"
+import { RSSSource, updateSource, updateUnreadCounts } from "./source"
 import { FeedActionTypes, INIT_FEED, LOAD_MORE, dismissItems } from "./feed"
 import {
     pushNotification,
@@ -33,6 +29,7 @@ import {
 export class RSSItem {
     _id: number
     source: number
+    guid?: string
     title: string
     link: string
     date: Date
@@ -48,23 +45,21 @@ export class RSSItem {
     serviceRef?: string
 
     constructor(item: MyParserItem, source: RSSSource) {
-        for (let field of ["title", "link", "creator"]) {
+        for (let field of ["title", "link", "creator", "author"]) {
             const content = item[field]
             if (content && typeof content !== "string") delete item[field]
         }
         this.source = source.sid
-        this.title = item.title
-            ? htmlDecode(item.title)
-            : intl.get("article.untitled")
+        if (!source.serviceRef) {
+            this.guid = [item.guid, item.id].find(
+                value => typeof value === "string" && value.trim().length > 0
+            )
+        }
+        this.title = item.title || intl.get("article.untitled")
         this.link = item.link || ""
         this.fetchedDate = new Date()
-        const parsedDate = new Date(
-            item.isoDate ?? item.pubDate ?? this.fetchedDate
-        )
-        // Fall back to the fetch time when a feed supplies an unparseable date,
-        // otherwise the NaN timestamp corrupts date ordering and indexing.
-        this.date = isNaN(parsedDate.getTime()) ? this.fetchedDate : parsedDate
-        this.creator = item.creator
+        this.date = getValidDate(item.isoDate, item.pubDate, this.fetchedDate)
+        this.creator = item.creator || item.author
         this.hasRead = false
         this.starred = false
         this.hidden = false
@@ -113,26 +108,6 @@ export class RSSItem {
         ) {
             delete item.thumb
         }
-        if (parsed.videoMeta) {
-            item.thumb = item.thumb
-                ? item.thumb
-                : parsed.videoMeta["media:thumbnail"][0].$.url
-            item.snippet = item.snippet
-                ? item.snippet
-                : parsed.videoMeta["media:description"][0] || ""
-            const views =
-                parsed.videoMeta["media:community"][0]["media:statistics"][0].$
-                    .views
-            const likes =
-                parsed.videoMeta["media:community"][0]["media:starRating"][0].$
-                    .count
-            item.content = parseYouTubeContent(
-                item.link.replace("watch?v=", "embed/"),
-                views,
-                likes,
-                item.snippet
-            )
-        }
     }
 }
 
@@ -153,7 +128,6 @@ interface FetchItemsAction {
     fetchCount?: number
     items?: RSSItem[]
     itemState?: ItemState
-    sources?: SourceState
     errSource?: RSSSource
     err?
 }
@@ -183,7 +157,6 @@ interface ToggleStarredAction {
 interface ToggleHiddenAction {
     type: typeof TOGGLE_HIDDEN
     item: RSSItem
-    sources: SourceState
 }
 
 export type ItemActionTypes =
@@ -204,15 +177,13 @@ export function fetchItemsRequest(fetchCount = 0): ItemActionTypes {
 
 export function fetchItemsSuccess(
     items: RSSItem[],
-    itemState: ItemState,
-    sources: SourceState = {}
+    itemState: ItemState
 ): ItemActionTypes {
     return {
         type: FETCH_ITEMS,
         status: ActionStatus.Success,
         items: items,
         itemState: itemState,
-        sources: sources,
     }
 }
 
@@ -233,22 +204,34 @@ export function fetchItemsIntermediate(): ItemActionTypes {
 }
 
 export async function insertItems(items: RSSItem[]): Promise<RSSItem[]> {
-    // Service items are built without the RSSItem constructor, so guard here
-    // against unparseable dates that would otherwise break sorting and indexing.
-    for (let item of items) {
-        if (isNaN(item.date.getTime())) {
-            item.date = isNaN(item.fetchedDate.getTime())
-                ? new Date()
-                : item.fetchedDate
-        }
+    if (items.length === 0) return []
+    // Service integrations construct articles without going through RSSItem.
+    for (const item of items) {
+        item.fetchedDate = getValidDate(item.fetchedDate, item.date)
+        item.date = getValidDate(item.date, item.fetchedDate)
     }
     items.sort((a, b) => a.date.getTime() - b.date.getTime())
-    const rows = items.map(item => db.items.createRow(item))
-    return (await db.itemsDB
-        .insert()
-        .into(db.items)
-        .values(rows)
-        .exec()) as RSSItem[]
+    const values = items.map(item => ({
+        source: item.source,
+        guid: item.guid || null,
+        title: item.title,
+        link: item.link,
+        date: item.date,
+        fetchedDate: item.fetchedDate,
+        thumb: item.thumb || null,
+        content: item.content,
+        snippet: item.snippet,
+        creator: item.creator || null,
+        hasRead: item.hasRead,
+        starred: item.starred,
+        hidden: item.hidden,
+        notify: item.notify,
+        serviceRef: item.serviceRef || null,
+    }))
+    return (await database
+        .insert(itemsTable)
+        .values(values)
+        .returning()) as unknown as RSSItem[]
 }
 
 export function fetchItems(
@@ -283,7 +266,14 @@ export function fetchItems(
                           .map(sid => sourcesState[sid])
                           .filter(s => !s.serviceRef)
             for (let source of sources) {
-                let promise = RSSSource.fetchItems(source)
+                const state = getState()
+                let promise = RSSSource.fetchItems(
+                    source,
+                    getRulesForTarget(state.rules, state.groups, {
+                        type: "source",
+                        sid: source.sid,
+                    })
+                )
                 promise.then(() =>
                     dispatch(
                         updateSource({ ...source, lastFetched: new Date() })
@@ -308,8 +298,7 @@ export function fetchItems(
                         dispatch(
                             fetchItemsSuccess(
                                 inserted.reverse(),
-                                getState().items,
-                                getState().sources
+                                getState().items
                             )
                         )
                         resolve()
@@ -328,13 +317,7 @@ export function fetchItems(
                         dispatch(setupAutoFetch())
                     })
                     .catch(err => {
-                        dispatch(
-                            fetchItemsSuccess(
-                                [],
-                                getState().items,
-                                getState().sources
-                            )
-                        )
+                        dispatch(fetchItemsSuccess([], getState().items))
                         window.utils.showErrorBox(
                             "A database error has occurred.",
                             String(err)
@@ -357,15 +340,14 @@ const markUnreadDone = (item: RSSItem): ItemActionTypes => ({
     item: item,
 })
 
-export function markRead(item: RSSItem): AppThunk {
-    return (dispatch, getState) => {
+export function markRead(item: RSSItem): AppThunk<Promise<void>> {
+    return async (dispatch, getState) => {
         item = getState().items[item._id]
         if (!item.hasRead) {
-            db.itemsDB
-                .update(db.items)
-                .where(db.items._id.eq(item._id))
-                .set(db.items.hasRead, true)
-                .exec()
+            await database
+                .update(itemsTable)
+                .set({ hasRead: true })
+                .where(eq(itemsTable._id, item._id))
             dispatch(markReadDone(item))
             if (item.serviceRef) {
                 dispatch(dispatch(getServiceHooks()).markRead?.(item))
@@ -385,27 +367,26 @@ export function markAllRead(
             let feed = state.feeds[state.page.feedId]
             sids = feed.sids
         }
+        if (sids.length === 0) return
         const action = dispatch(getServiceHooks()).markAllRead?.(
             sids,
             date,
             before
         )
         if (action) await dispatch(action)
-        const predicates: lf.Predicate[] = [
-            db.items.source.in(sids),
-            db.items.hasRead.eq(false),
+        const conditions = [
+            inArray(itemsTable.source, sids),
+            eq(itemsTable.hasRead, false),
         ]
         if (date) {
-            predicates.push(
-                before ? db.items.date.lte(date) : db.items.date.gte(date)
+            conditions.push(
+                before ? lte(itemsTable.date, date) : gte(itemsTable.date, date)
             )
         }
-        const query = lf.op.and.apply(null, predicates)
-        await db.itemsDB
-            .update(db.items)
-            .set(db.items.hasRead, true)
-            .where(query)
-            .exec()
+        await database
+            .update(itemsTable)
+            .set({ hasRead: true })
+            .where(and(...conditions))
         if (date) {
             dispatch({
                 type: MARK_ALL_READ,
@@ -423,15 +404,14 @@ export function markAllRead(
     }
 }
 
-export function markUnread(item: RSSItem): AppThunk {
-    return (dispatch, getState) => {
+export function markUnread(item: RSSItem): AppThunk<Promise<void>> {
+    return async (dispatch, getState) => {
         item = getState().items[item._id]
         if (item.hasRead) {
-            db.itemsDB
-                .update(db.items)
-                .where(db.items._id.eq(item._id))
-                .set(db.items.hasRead, false)
-                .exec()
+            await database
+                .update(itemsTable)
+                .set({ hasRead: false })
+                .where(eq(itemsTable._id, item._id))
             dispatch(markUnreadDone(item))
             if (item.serviceRef) {
                 dispatch(dispatch(getServiceHooks()).markUnread?.(item))
@@ -445,13 +425,12 @@ const toggleStarredDone = (item: RSSItem): ItemActionTypes => ({
     item: item,
 })
 
-export function toggleStarred(item: RSSItem): AppThunk {
-    return dispatch => {
-        db.itemsDB
-            .update(db.items)
-            .where(db.items._id.eq(item._id))
-            .set(db.items.starred, !item.starred)
-            .exec()
+export function toggleStarred(item: RSSItem): AppThunk<Promise<void>> {
+    return async dispatch => {
+        await database
+            .update(itemsTable)
+            .set({ starred: !item.starred })
+            .where(eq(itemsTable._id, item._id))
         dispatch(toggleStarredDone(item))
         if (item.serviceRef) {
             const hooks = dispatch(getServiceHooks())
@@ -461,23 +440,18 @@ export function toggleStarred(item: RSSItem): AppThunk {
     }
 }
 
-const toggleHiddenDone = (
-    item: RSSItem,
-    sources: SourceState
-): ItemActionTypes => ({
+const toggleHiddenDone = (item: RSSItem): ItemActionTypes => ({
     type: TOGGLE_HIDDEN,
     item: item,
-    sources: sources,
 })
 
-export function toggleHidden(item: RSSItem): AppThunk {
-    return (dispatch, getState) => {
-        db.itemsDB
-            .update(db.items)
-            .where(db.items._id.eq(item._id))
-            .set(db.items.hidden, !item.hidden)
-            .exec()
-        dispatch(toggleHiddenDone(item, getState().sources))
+export function toggleHidden(item: RSSItem): AppThunk<Promise<void>> {
+    return async dispatch => {
+        await database
+            .update(itemsTable)
+            .set({ hidden: !item.hidden })
+            .where(eq(itemsTable._id, item._id))
+        dispatch(toggleHiddenDone(item))
     }
 }
 
@@ -598,7 +572,8 @@ export function itemReducer(
         case SYNC_LOCAL_ITEMS: {
             let nextState = { ...state }
             for (let item of Object.values(state)) {
-                if (item.hasOwnProperty("serviceRef")) {
+                // Local SQLite rows also have serviceRef, with a null value.
+                if (item.serviceRef) {
                     const nextItem = { ...item }
                     nextItem.hasRead = !action.unreadIds.has(item.serviceRef)
                     nextItem.starred = action.starredIds.has(item.serviceRef)

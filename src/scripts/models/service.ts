@@ -1,5 +1,5 @@
-import * as db from "../db"
-import lf from "lovefield"
+import { database, itemsTable, sourcesTable } from "../db"
+import { and, eq, isNotNull, or } from "drizzle-orm"
 import { SyncService, ServiceConfigs } from "../../schema-types"
 import { AppThunk, ActionStatus } from "../utils"
 import { RSSItem, insertItems, fetchItemsSuccess } from "./item"
@@ -27,15 +27,15 @@ export interface ServiceHooks {
     updateSources?: () => AppThunk<Promise<[RSSSource[], Map<string, string>]>>
     fetchItems?: () => AppThunk<Promise<[RSSItem[], ServiceConfigs]>>
     syncItems?: () => AppThunk<Promise<[Set<string>, Set<string>]>>
-    markRead?: (item: RSSItem) => AppThunk
-    markUnread?: (item: RSSItem) => AppThunk
+    markRead?: (item: RSSItem) => AppThunk<Promise<void>>
+    markUnread?: (item: RSSItem) => AppThunk<Promise<void>>
     markAllRead?: (
         sids?: number[],
         date?: Date,
         before?: boolean
     ) => AppThunk<Promise<void>>
-    star?: (item: RSSItem) => AppThunk
-    unstar?: (item: RSSItem) => AppThunk
+    star?: (item: RSSItem) => AppThunk<Promise<void>>
+    unstar?: (item: RSSItem) => AppThunk<Promise<void>>
 }
 
 export function getServiceHooksFromType(type: SyncService): ServiceHooks {
@@ -123,11 +123,12 @@ function updateSources(
                 existing.delete(s.serviceRef)
                 return doc
             } else {
-                const docs = (await db.sourcesDB
+                const docs = (await database
                     .select()
-                    .from(db.sources)
-                    .where(db.sources.url.eq(s.url))
-                    .exec()) as RSSSource[]
+                    .from(sourcesTable)
+                    .where(
+                        eq(sourcesTable.url, s.url)
+                    )) as unknown as RSSSource[]
                 if (docs.length === 0) {
                     // Create a new source
                     forceSettings()
@@ -144,11 +145,9 @@ function updateSources(
                     doc.serviceRef = s.serviceRef
                     doc.unreadCount = 0
                     await dispatch(updateSource(doc))
-                    await db.itemsDB
-                        .delete()
-                        .from(db.items)
-                        .where(db.items.source.eq(doc.sid))
-                        .exec()
+                    await database
+                        .delete(itemsTable)
+                        .where(eq(itemsTable.source, doc.sid))
                     return doc
                 } else {
                     return docs[0]
@@ -185,57 +184,60 @@ function syncItems(hook: ServiceHooks["syncItems"]): AppThunk<Promise<void>> {
         const [unreadRefs, starredRefs] = await dispatch(hook())
         const unreadCopy = new Set(unreadRefs)
         const starredCopy = new Set(starredRefs)
-        const rows = await db.itemsDB
-            .select(db.items.serviceRef, db.items.hasRead, db.items.starred)
-            .from(db.items)
+        const rows = await database
+            .select({
+                serviceRef: itemsTable.serviceRef,
+                hasRead: itemsTable.hasRead,
+                starred: itemsTable.starred,
+            })
+            .from(itemsTable)
             .where(
-                lf.op.and(
-                    db.items.serviceRef.isNotNull(),
-                    lf.op.or(
-                        db.items.hasRead.eq(false),
-                        db.items.starred.eq(true)
+                and(
+                    isNotNull(itemsTable.serviceRef),
+                    or(
+                        eq(itemsTable.hasRead, false),
+                        eq(itemsTable.starred, true)
                     )
                 )
             )
-            .exec()
-        const updates = new Array<lf.query.Update>()
+        const updatePromises: Promise<unknown>[] = []
         for (let row of rows) {
-            const serviceRef = row["serviceRef"]
-            if (row["hasRead"] === false && !unreadRefs.delete(serviceRef)) {
-                updates.push(
-                    db.itemsDB
-                        .update(db.items)
-                        .set(db.items.hasRead, true)
-                        .where(db.items.serviceRef.eq(serviceRef))
+            const serviceRef = row.serviceRef
+            if (row.hasRead === false && !unreadRefs.delete(serviceRef)) {
+                updatePromises.push(
+                    database
+                        .update(itemsTable)
+                        .set({ hasRead: true })
+                        .where(eq(itemsTable.serviceRef, serviceRef))
                 )
             }
-            if (row["starred"] === true && !starredRefs.delete(serviceRef)) {
-                updates.push(
-                    db.itemsDB
-                        .update(db.items)
-                        .set(db.items.starred, false)
-                        .where(db.items.serviceRef.eq(serviceRef))
+            if (row.starred === true && !starredRefs.delete(serviceRef)) {
+                updatePromises.push(
+                    database
+                        .update(itemsTable)
+                        .set({ starred: false })
+                        .where(eq(itemsTable.serviceRef, serviceRef))
                 )
             }
         }
         for (let unread of unreadRefs) {
-            updates.push(
-                db.itemsDB
-                    .update(db.items)
-                    .set(db.items.hasRead, false)
-                    .where(db.items.serviceRef.eq(unread))
+            updatePromises.push(
+                database
+                    .update(itemsTable)
+                    .set({ hasRead: false })
+                    .where(eq(itemsTable.serviceRef, unread))
             )
         }
         for (let starred of starredRefs) {
-            updates.push(
-                db.itemsDB
-                    .update(db.items)
-                    .set(db.items.starred, true)
-                    .where(db.items.serviceRef.eq(starred))
+            updatePromises.push(
+                database
+                    .update(itemsTable)
+                    .set({ starred: true })
+                    .where(eq(itemsTable.serviceRef, starred))
             )
         }
-        if (updates.length > 0) {
-            await db.itemsDB.createTransaction().exec(updates)
+        if (updatePromises.length > 0) {
+            await Promise.all(updatePromises)
             await dispatch(updateUnreadCounts())
             dispatch(syncLocalItems(unreadCopy, starredCopy))
         }
@@ -250,13 +252,7 @@ function fetchItems(
         const [items, configs] = await dispatch(hook())
         if (items.length > 0) {
             const inserted = await insertItems(items)
-            dispatch(
-                fetchItemsSuccess(
-                    inserted.reverse(),
-                    getState().items,
-                    getState().sources
-                )
-            )
+            dispatch(fetchItemsSuccess(inserted.reverse(), getState().items))
             if (background) {
                 for (let item of inserted) {
                     if (item.notify) dispatch(pushNotification(item))

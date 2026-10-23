@@ -5,6 +5,8 @@ import { RootState } from "./reducer"
 import Parser from "rss-parser"
 import Url from "url"
 import { SearchEngines } from "../schema-types"
+import { sql } from "drizzle-orm"
+import { database } from "./db"
 
 export enum ActionStatus {
     Request,
@@ -34,7 +36,12 @@ const rssParser = new Parser({
     },
 })
 type extractGeneric<Type> = Type extends Parser<infer _, infer U> ? U : never
-export type MyParserItem = extractGeneric<typeof rssParser> & Parser.Item
+export type MyParserItem = extractGeneric<typeof rssParser> &
+    Parser.Item & {
+        // rss-parser emits this for Atom entries but omits it from Parser.Item.
+        author?: string
+        id?: string
+    }
 
 const CHARSET_RE = /charset=([^()<>@,;:\"/[\]?.=\s]*)/i
 const XML_ENCODING_RE = /^<\?xml.+encoding="(.+?)".*?\?>/i
@@ -151,7 +158,7 @@ export async function fetchYTChannelIcon(url: string) {
 
 export async function fetchFavicon(url: string) {
     try {
-        const customIcon = window.settings.getIconStatus()
+        const customIcon = true
         if (customIcon) {
             if (
                 Url.parse(url).host === "www.youtube.com" &&
@@ -233,7 +240,7 @@ export const urlTest = (s: string) =>
         s
     )
 
-export const getWindowBreakpoint = () => window.outerWidth >= 1440
+export const getWindowBreakpoint = () => window.innerWidth >= 1440
 
 export const cutText = (s: string, length: number) => {
     return s.length <= length ? s : s.slice(0, length) + "…"
@@ -308,27 +315,11 @@ function byteLength(str: string) {
     return s
 }
 
-export function calculateItemSize(): Promise<number> {
-    return new Promise((resolve, reject) => {
-        let result = 0
-        let openRequest = window.indexedDB.open("itemsDB")
-        openRequest.onsuccess = () => {
-            let db = openRequest.result
-            let objectStore = db.transaction("items").objectStore("items")
-            let cursorRequest = objectStore.openCursor()
-            cursorRequest.onsuccess = () => {
-                let cursor = cursorRequest.result
-                if (cursor) {
-                    result += byteLength(JSON.stringify(cursor.value))
-                    cursor.continue()
-                } else {
-                    resolve(result)
-                }
-            }
-            cursorRequest.onerror = () => reject()
-        }
-        openRequest.onerror = () => reject()
-    })
+export async function calculateItemSize(): Promise<number> {
+    const result = await database.get<[number]>(
+        sql`SELECT page_count * page_size AS size FROM pragma_page_count(), pragma_page_size()`
+    )
+    return result?.[0] ?? 0
 }
 
 export function validateRegex(regex: string, flags = ""): RegExp {

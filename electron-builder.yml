@@ -8,7 +8,21 @@ files:
 directories:
     output: "./bin/${platform}/${arch}/"
 mac:
+    files:
+        - "./dist/**/*"
+        - "!./dist/fontlist"
+        - "!**/*.js.map"
+        - "!node_modules/better-sqlite3/prebuilds/linux*.node"
+        - "!node_modules/better-sqlite3/prebuilds/win32-*.node"
+    # Both builds contain both prebuilds; better-sqlite3 selects process.arch.
+    x64ArchFiles: "Contents/Resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/darwin-*.node"
+    minimumSystemVersion: 13.0.0
     darkModeSupport: true
+    hardenedRuntime: true
+    gatekeeperAssess: false
+    entitlements: "./build/entitlements.mac.plist"
+    entitlementsInherit: "./build/entitlements.mac.plist"
+    notarize: true
     target:
         - dmg
     artifactName: "Fluent-Reader_MacOS_${arch}.${ext}"
@@ -31,6 +45,7 @@ mac:
         - pt_BR
         - pt_PT
         - cs
+        - pl
 win:
     target:
         - nsis
@@ -59,6 +74,7 @@ appx:
         - pt-BR
         - pt-PT
         - cs
+        - pl
     showNameOnTiles: true
     setBuildNumber: true
 nsis:

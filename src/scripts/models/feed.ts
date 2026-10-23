@@ -1,5 +1,5 @@
-import * as db from "../db"
-import lf from "lovefield"
+import { database, itemsTable } from "../db"
+import { and, eq, inArray, desc, sql } from "drizzle-orm"
 import {
     SourceActionTypes,
     INIT_SOURCES,
@@ -7,7 +7,6 @@ import {
     DELETE_SOURCE,
     UNHIDE_SOURCE,
     HIDE_SOURCE,
-    SourceState,
 } from "./source"
 import {
     ItemActionTypes,
@@ -48,42 +47,12 @@ export class FeedFilter {
         this.search = search
     }
 
-    static toPredicates(filter: FeedFilter) {
-        let type = filter.type
-        const predicates = new Array<lf.Predicate>()
-        if (!(type & FilterType.ShowRead))
-            predicates.push(db.items.hasRead.eq(false))
-        if (!(type & FilterType.ShowNotStarred))
-            predicates.push(db.items.starred.eq(true))
-        if (!(type & FilterType.ShowHidden))
-            predicates.push(db.items.hidden.eq(false))
-        if (filter.search !== "") {
-            const flags = type & FilterType.CaseInsensitive ? "i" : ""
-            const regex = RegExp(filter.search, flags)
-            if (type & FilterType.FullSearch) {
-                predicates.push(
-                    lf.op.or(
-                        db.items.title.match(regex),
-                        db.items.snippet.match(regex)
-                    )
-                )
-            } else {
-                predicates.push(db.items.title.match(regex))
-            }
-        }
-        return predicates
-    }
-
-    static testItem(filter: FeedFilter, item: RSSItem, sources?: SourceState) {
+    static testItem(filter: FeedFilter, item: RSSItem) {
         let type = filter.type
         let flag = true
         if (!(type & FilterType.ShowRead)) flag = flag && !item.hasRead
         if (!(type & FilterType.ShowNotStarred)) flag = flag && item.starred
         if (!(type & FilterType.ShowHidden)) flag = flag && !item.hidden
-        if (sources) {
-            const source = sources[item.source]
-            if (source && source.imageOnly) flag = flag && Boolean(item.thumb)
-        }
         if (filter.search !== "") {
             const flags = type & FilterType.CaseInsensitive ? "i" : ""
             const regex = RegExp(filter.search, flags)
@@ -105,31 +74,6 @@ export const SOURCE = "SOURCE"
 
 const LOAD_QUANTITY = 50
 
-// Lovefield silently drops the orderBy for skip()/limit() queries whose
-// predicate contains a top-level OR, which returns an arbitrary (and
-// mis-ordered) page of rows. So instead of building one OR predicate spanning
-// every source, loadFeed runs one plain `source IN (...)` query per predicate
-// shape and merges the (correctly ordered) results in JS.
-function sourceQueryGroups(
-    sids: number[],
-    sources: SourceState
-): lf.Predicate[][] {
-    const normalSids = sids.filter(
-        sid => !(sources[sid] && sources[sid].imageOnly)
-    )
-    const imageOnlySids = sids.filter(
-        sid => sources[sid] && sources[sid].imageOnly
-    )
-    const groups: lf.Predicate[][] = []
-    if (normalSids.length > 0) groups.push([db.items.source.in(normalSids)])
-    if (imageOnlySids.length > 0)
-        groups.push([
-            db.items.source.in(imageOnlySids),
-            db.items.thumb.isNotNull(),
-        ])
-    return groups
-}
-
 export class RSSFeed {
     _id: string
     loaded: boolean
@@ -148,62 +92,58 @@ export class RSSFeed {
         this.filter = filter === null ? new FeedFilter() : filter
     }
 
-    static async loadFeed(
-        feed: RSSFeed,
-        sources: SourceState,
-        skip = 0
-    ): Promise<RSSItem[]> {
-        const groups = sourceQueryGroups(feed.sids, sources)
-        if (groups.length === 0) return []
-        // Rebuild the filter predicates per query: Lovefield mutates predicate
-        // nodes when composing a query, so they can't be shared between queries.
-        const whereFor = (sourcePredicates: lf.Predicate[]) => {
-            const predicates = [
-                ...FeedFilter.toPredicates(feed.filter),
-                ...sourcePredicates,
-            ]
-            return predicates.length === 1
-                ? predicates[0]
-                : lf.op.and.apply(null, predicates)
+    static async loadFeed(feed: RSSFeed, skip = 0): Promise<RSSItem[]> {
+        if (feed.sids.length === 0) return []
+        const filter = feed.filter
+        const type = filter.type
+        const conditions = [inArray(itemsTable.source, feed.sids)]
+        if (!(type & FilterType.ShowRead))
+            conditions.push(eq(itemsTable.hasRead, false))
+        if (!(type & FilterType.ShowNotStarred))
+            conditions.push(eq(itemsTable.starred, true))
+        if (!(type & FilterType.ShowHidden))
+            conditions.push(eq(itemsTable.hidden, false))
+        if (filter.search !== "") {
+            const pattern = filter.search
+            if (type & FilterType.FullSearch) {
+                if (type & FilterType.CaseInsensitive) {
+                    conditions.push(
+                        sql`(regexpi(${pattern}, ${itemsTable.title}) OR regexpi(${pattern}, ${itemsTable.snippet}))`
+                    )
+                } else {
+                    conditions.push(
+                        sql`(regexp(${pattern}, ${itemsTable.title}) OR regexp(${pattern}, ${itemsTable.snippet}))`
+                    )
+                }
+            } else if (type & FilterType.CreatorSearch) {
+                if (type & FilterType.CaseInsensitive) {
+                    conditions.push(
+                        sql`regexpi(${pattern}, ${itemsTable.creator})`
+                    )
+                } else {
+                    conditions.push(
+                        sql`regexp(${pattern}, ${itemsTable.creator})`
+                    )
+                }
+            } else {
+                if (type & FilterType.CaseInsensitive) {
+                    conditions.push(
+                        sql`regexpi(${pattern}, ${itemsTable.title})`
+                    )
+                } else {
+                    conditions.push(
+                        sql`regexp(${pattern}, ${itemsTable.title})`
+                    )
+                }
+            }
         }
-
-        // Fast path: a single `source IN (...)` query paginates correctly, so
-        // push skip/limit straight into the query and only materialise one page.
-        if (groups.length === 1) {
-            return db.itemsDB
-                .select()
-                .from(db.items)
-                .where(whereFor(groups[0]))
-                .orderBy(db.items.date, lf.Order.DESC)
-                .skip(skip)
-                .limit(LOAD_QUANTITY)
-                .exec() as Promise<RSSItem[]>
-        }
-
-        // Multiple predicate shapes (some sources are image-only): the global
-        // skip can't be mapped onto each sub-query, so fetch each group's head
-        // and merge. Only hit when a feed mixes image-only and normal sources.
-        const head = skip + LOAD_QUANTITY
-        const results = await Promise.all(
-            groups.map(
-                sourcePredicates =>
-                    db.itemsDB
-                        .select()
-                        .from(db.items)
-                        .where(whereFor(sourcePredicates))
-                        .orderBy(db.items.date, lf.Order.DESC)
-                        .limit(head)
-                        .exec() as Promise<RSSItem[]>
-            )
-        )
-        const merged = results.reduce((a, b) =>
-            mergeSortedArrays(
-                a,
-                b,
-                (x, y) => y.date.getTime() - x.date.getTime()
-            )
-        )
-        return merged.slice(skip, head)
+        return (await database
+            .select()
+            .from(itemsTable)
+            .where(and(...conditions))
+            .orderBy(desc(itemsTable.date))
+            .offset(skip)
+            .limit(LOAD_QUANTITY)) as unknown as RSSItem[]
     }
 }
 
@@ -257,7 +197,7 @@ export function dismissItems(): AppThunk {
         let iids = new Set<number>()
         for (let iid of state.feeds[fid].iids) {
             let item = state.items[iid]
-            if (!FeedFilter.testItem(filter, item, state.sources)) {
+            if (!FeedFilter.testItem(filter, item)) {
                 iids.add(iid)
             }
         }
@@ -306,10 +246,9 @@ export function initFeeds(force = false): AppThunk<Promise<void>> {
     return (dispatch, getState) => {
         dispatch(initFeedsRequest())
         let promises = new Array<Promise<void>>()
-        const sources = getState().sources
         for (let feed of Object.values(getState().feeds)) {
             if (!feed.loaded || force) {
-                let p = RSSFeed.loadFeed(feed, sources)
+                let p = RSSFeed.loadFeed(feed)
                     .then(items => {
                         dispatch(initFeedSuccess(feed, items))
                     })
@@ -361,9 +300,9 @@ export function loadMore(feed: RSSFeed): AppThunk<Promise<void>> {
             dispatch(loadMoreRequest(feed))
             const state = getState()
             const skipNum = feed.iids.filter(i =>
-                FeedFilter.testItem(feed.filter, state.items[i], state.sources)
+                FeedFilter.testItem(feed.filter, state.items[i])
             ).length
-            return RSSFeed.loadFeed(feed, state.sources, skipNum)
+            return RSSFeed.loadFeed(feed, skipNum)
                 .then(items => {
                     dispatch(loadMoreSuccess(feed, items))
                 })
@@ -448,11 +387,7 @@ export function feedReducer(
                             let items = action.items.filter(
                                 i =>
                                     feed.sids.includes(i.source) &&
-                                    FeedFilter.testItem(
-                                        feed.filter,
-                                        i,
-                                        action.sources
-                                    )
+                                    FeedFilter.testItem(feed.filter, i)
                             )
                             if (items.length > 0) {
                                 let oldItems = feed.iids.map(
@@ -537,8 +472,7 @@ export function feedReducer(
             let nextItem = applyItemReduction(action.item, action.type)
             let filteredFeeds = Object.values(state).filter(
                 feed =>
-                    feed.loaded &&
-                    !FeedFilter.testItem(feed.filter, nextItem, action.sources)
+                    feed.loaded && !FeedFilter.testItem(feed.filter, nextItem)
             )
             if (filteredFeeds.length > 0) {
                 let nextState = { ...state }

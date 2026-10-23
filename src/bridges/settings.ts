@@ -5,14 +5,18 @@ import {
     SearchEngines,
     ServiceConfigs,
     ViewConfigs,
-    ThumbnailResizeMode,
-    ProxyImageFormat,
+    StoredRule,
+    StoredRules,
+    RuleTarget,
 } from "../schema-types"
 import { ipcRenderer } from "electron"
 
 const settingsBridge = {
+    allocateGroupId: (): number => {
+        return ipcRenderer.sendSync("allocate-group-id")
+    },
     saveGroups: (groups: SourceGroup[]) => {
-        ipcRenderer.invoke("set-groups", groups)
+        return ipcRenderer.invoke("set-groups", groups)
     },
     loadGroups: (): SourceGroup[] => {
         return ipcRenderer.sendSync("get-groups")
@@ -23,55 +27,6 @@ const settingsBridge = {
     },
     setDefaultMenu: (state: boolean) => {
         ipcRenderer.invoke("set-menu", state)
-    },
-
-    getIconStatus: (): boolean => {
-        return ipcRenderer.sendSync("get-icon-status")
-    },
-    toggleIconStatus: () => {
-        ipcRenderer.send("toggle-icon-status")
-    },
-
-    getThumbnailResizeMode: (): ThumbnailResizeMode => {
-        return ipcRenderer.sendSync("get-thumbnail-resize-mode")
-    },
-    setThumbnailResizeMode: (mode: ThumbnailResizeMode) => {
-        ipcRenderer.invoke("set-thumbnail-resize-mode", mode)
-    },
-
-    getImageErrorFallbackProxy: (): boolean => {
-        return ipcRenderer.sendSync("get-image-error-fallback-proxy")
-    },
-    setImageErrorFallbackProxy: (flag: boolean) => {
-        ipcRenderer.invoke("set-image-error-fallback-proxy", flag)
-    },
-
-    getCardBlurBackground: (): boolean => {
-        return ipcRenderer.sendSync("get-card-blur-background")
-    },
-    setCardBlurBackground: (flag: boolean) => {
-        ipcRenderer.invoke("set-card-blur-background", flag)
-    },
-
-    getThumbnailProxyFormat: (): ProxyImageFormat => {
-        return ipcRenderer.sendSync("get-thumbnail-proxy-format")
-    },
-    setThumbnailProxyFormat: (format: ProxyImageFormat) => {
-        ipcRenderer.invoke("set-thumbnail-proxy-format", format)
-    },
-
-    getFadeAnimationSpeed: (): number => {
-        return ipcRenderer.sendSync("get-fade-animation-speed")
-    },
-    setFadeAnimationSpeed: (speed: number) => {
-        ipcRenderer.invoke("set-fade-animation-speed", speed)
-    },
-
-    getAutoLoadMore: (): boolean => {
-        return ipcRenderer.sendSync("get-auto-load-more")
-    },
-    setAutoLoadMore: (flag: boolean) => {
-        ipcRenderer.invoke("set-auto-load-more", flag)
     },
 
     getProxyStatus: (): boolean => {
@@ -103,13 +58,6 @@ const settingsBridge = {
     shouldUseDarkColors: (): boolean => {
         return ipcRenderer.sendSync("get-theme-dark-color")
     },
-
-    getAccentColor: (): string => {
-        return ipcRenderer.sendSync("get-accent-color")
-    },
-    setAccentColor: (color: string) => {
-        ipcRenderer.invoke("set-accent-color", color)
-    },
     addThemeUpdateListener: (callback: (shouldDark: boolean) => any) => {
         ipcRenderer.on("theme-updated", (_, shouldDark) => {
             callback(shouldDark)
@@ -138,13 +86,6 @@ const settingsBridge = {
     },
     setFont: (font: string) => {
         ipcRenderer.invoke("set-font", font)
-    },
-
-    getAppFont: (): string => {
-        return ipcRenderer.sendSync("get-app-font")
-    },
-    setAppFont: (font: string) => {
-        ipcRenderer.invoke("set-app-font", font)
     },
 
     getFetchInterval: (): number => {
@@ -182,19 +123,33 @@ const settingsBridge = {
         ipcRenderer.invoke("set-view-configs", view, configs)
     },
 
-    getNeDBStatus: (): boolean => {
-        return ipcRenderer.sendSync("get-nedb-status")
+    getAllRules: (): StoredRules => {
+        return ipcRenderer.sendSync("get-all-rules")
     },
-    setNeDBStatus: (flag: boolean) => {
-        ipcRenderer.invoke("set-nedb-status", flag)
+    setRulesForTarget: (
+        target: RuleTarget,
+        rules: StoredRule[]
+    ): Promise<void> => {
+        return ipcRenderer.invoke("set-rules-for-target", target, rules)
+    },
+    migrateLovefieldRules: (
+        sources: Record<string, unknown>[]
+    ): Promise<void> => {
+        return ipcRenderer.invoke("migrate-lovefield-rules", sources)
     },
 
-    getAll: () => {
-        return ipcRenderer.sendSync("get-all-settings") as Object
+    getDBVersion: (): string | null => {
+        return ipcRenderer.sendSync("get-db-version")
+    },
+    setDBVersion: (version: string): Promise<void> => {
+        return ipcRenderer.invoke("set-db-version", version)
     },
 
-    setAll: configs => {
-        ipcRenderer.invoke("import-all-settings", configs)
+    getUnreadSourcesOnly: (): boolean => {
+        return ipcRenderer.sendSync("get-unread-sources-only")
+    },
+    setUnreadSourcesOnly: (flag: boolean) => {
+        ipcRenderer.invoke("set-unread-sources-only", flag)
     },
 }
 
@@ -202,6 +157,7 @@ declare global {
     interface Window {
         settings: typeof settingsBridge
     }
+    var settings: typeof settingsBridge
 }
 
 export default settingsBridge

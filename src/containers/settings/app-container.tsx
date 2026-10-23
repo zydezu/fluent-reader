@@ -4,7 +4,8 @@ import {
     saveSettings,
     setupAutoFetch,
 } from "../../scripts/models/app"
-import * as db from "../../scripts/db"
+import { database, itemsTable } from "../../scripts/db"
+import { lt, sql } from "drizzle-orm"
 import AppTab from "../../components/settings/app"
 import { importAll } from "../../scripts/settings"
 import { updateUnreadCounts } from "../../scripts/models/source"
@@ -23,59 +24,11 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
         dispatch(saveSettings())
         let date = new Date()
         date.setTime(date.getTime() - days * 86400000)
-        await db.itemsDB
-            .delete()
-            .from(db.items)
-            .where(db.items.date.lt(date))
-            .exec()
+        await database.delete(itemsTable).where(lt(itemsTable.date, date))
+        // DELETE leaves reusable pages allocated; explicit cleanup should release them.
+        await database.run(sql`VACUUM`)
         await dispatch(updateUnreadCounts())
         dispatch(saveSettings())
-    },
-    removeDuplicates: async (): Promise<number> => {
-        dispatch(saveSettings())
-        const allItems = (await db.itemsDB
-            .select(
-                db.items._id,
-                db.items.source,
-                db.items.link,
-                db.items.title,
-                db.items.date
-            )
-            .from(db.items)
-            .exec()) as {
-            _id: number
-            source: number
-            link: string
-            title: string
-            date: Date
-        }[]
-        // Keep the earliest-inserted copy per (source, link) — same identity
-        // used by the fetch-time dedup check — and drop the rest.
-        allItems.sort((a, b) => a._id - b._id)
-        const seen = new Set<string>()
-        const duplicateIds: number[] = []
-        for (const item of allItems) {
-            const key = item.link
-                ? `${item.source}|${item.link}`
-                : `${item.source}|${item.title}|${new Date(
-                      item.date
-                  ).getTime()}`
-            if (seen.has(key)) {
-                duplicateIds.push(item._id)
-            } else {
-                seen.add(key)
-            }
-        }
-        if (duplicateIds.length > 0) {
-            await db.itemsDB
-                .delete()
-                .from(db.items)
-                .where(db.items._id.in(duplicateIds))
-                .exec()
-            await dispatch(updateUnreadCounts())
-        }
-        dispatch(saveSettings())
-        return duplicateIds.length
     },
     importAll: async () => {
         dispatch(saveSettings())
