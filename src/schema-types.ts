@@ -53,6 +53,17 @@ export const enum ImageCallbackTypes {
     CopyLink,
 }
 
+export const enum ThumbnailResizeMode {
+    Off,
+    Proxy,
+    Local,
+}
+
+export const enum ProxyImageFormat {
+    Original = "original",
+    WebP = "webp",
+}
+
 export const enum SyncService {
     None,
     Fever,
@@ -67,17 +78,6 @@ export interface ServiceConfigs {
     importGroups?: boolean
 }
 
-export const enum ThumbnailResizeMode {
-    Off = "off",
-    Proxy = "proxy",
-    Local = "local",
-}
-
-export const enum ProxyImageFormat {
-    Original = "original",
-    WebP = "webp",
-}
-
 export const enum WindowStateListenerType {
     Maximized,
     Focused,
@@ -90,6 +90,20 @@ export interface TouchBarTexts {
     refresh: string
     markAll: string
     notifications: string
+}
+
+export type RuleTarget =
+    | { type: "source"; sid: number }
+    | { type: "group"; gid: number }
+    | { type: "all" }
+
+export interface StoredRule {
+    id: string
+    target: RuleTarget
+    filter: number
+    search: string
+    match: boolean
+    actions: string[]
 }
 
 export type SchemaTypes = {
@@ -108,14 +122,7 @@ export type SchemaTypes = {
     serviceConfigs: ServiceConfigs
     filterType: number
     listViewConfigs: ViewConfigs
-    useNeDB: boolean
-    customIcon: boolean
-    thumbnailResizeMode: ThumbnailResizeMode
-    accentColor: string
-    appFontFamily: string
-    imageErrorFallbackProxy: boolean
-    autoLoadMore: boolean
-    cardBlurBackground: boolean
-    thumbnailProxyFormat: ProxyImageFormat
-    fadeAnimationSpeed: number
+    menuUnreadSourcesOnly: boolean
+    sourceRules: StoredRule[]
+    dbVersion: string
 }

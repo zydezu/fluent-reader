@@ -30,10 +30,9 @@ import {
     SELECT_PAGE,
     PageType,
     selectAllArticles,
-    reselectPage,
     showItemFromId,
 } from "./page"
-import { getCurrentLocale, setThemeDefaultFont } from "../settings"
+import { getCurrentLocale } from "../settings"
 import locales from "../i18n/_locales"
 import { SYNC_SERVICE, ServiceActionTypes } from "./service"
 
@@ -291,7 +290,7 @@ export function exitSettings(): AppThunk<Promise<void>> {
         if (!getState().app.settings.saving) {
             if (getState().app.settings.changed) {
                 dispatch(saveSettings())
-                dispatch(reselectPage())
+                dispatch(selectAllArticles(true))
                 await dispatch(initFeeds(true))
                 dispatch(toggleSettings(false))
                 freeMemory()
@@ -372,7 +371,6 @@ export interface InitIntlAction {
 }
 export const initIntlDone = (locale: string): InitIntlAction => {
     document.documentElement.lang = locale
-    setThemeDefaultFont(locale)
     return {
         type: INIT_INTL,
         locale: locale,
@@ -386,7 +384,7 @@ export function initIntl(): AppThunk<Promise<void>> {
             .init({
                 currentLocale: locale,
                 locales: locales,
-                fallbackLocale: "en-GB",
+                fallbackLocale: "en-US",
             })
             .then(() => {
                 dispatch(initIntlDone(locale))

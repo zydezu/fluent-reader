@@ -5,6 +5,8 @@ import { RootState } from "./reducer"
 import Parser from "rss-parser"
 import Url from "url"
 import { SearchEngines } from "../schema-types"
+import { sql } from "drizzle-orm"
+import { database } from "./db"
 
 export enum ActionStatus {
     Request,
@@ -29,7 +31,6 @@ const rssParser = new Parser({
             "image",
             ["content:encoded", "fullContent"],
             ["media:content", "mediaContent", { keepArray: true }],
-            ["media:group", "videoMeta", {keepArray: false}],
         ],
     },
 })
@@ -82,17 +83,10 @@ export async function parseRSS(url: string) {
         throw new Error(intl.get("log.networkError"))
     }
     if (result && result.ok) {
-        const content = await decodeFetchResponse(result)
-        const contentType = result.headers.get("content-type") || ""
-        if (
-            contentType.includes("text/html") ||
-            /^\s*<!DOCTYPE\s+html/i.test(content) ||
-            /^\s*<html/i.test(content)
-        ) {
-            throw new Error(intl.get("log.parseHTMLResponse"))
-        }
         try {
-            return await rssParser.parseString(content)
+            return await rssParser.parseString(
+                await decodeFetchResponse(result)
+            )
         } catch {
             throw new Error(intl.get("log.parseError"))
         }
@@ -103,57 +97,8 @@ export async function parseRSS(url: string) {
 
 export const domParser = new DOMParser()
 
-export async function fetchYTChannelIcon(url: string) {
-    let channelId = "";
-
-    try {
-        const parsedUrl = new URL(url);
-
-        channelId = parsedUrl.searchParams.get("channel_id") || "";
-
-        if (!channelId) {
-            const match = parsedUrl.pathname.match(/\/channel\/(UC[\w-]+)/);
-            if (match) {
-                channelId = match[1];
-            }
-        }
-
-        if (!channelId) {
-            return null;
-        }
-
-        const channelUrl = `https://www.youtube.com/channel/${channelId}`;
-
-        const result = await fetch(channelUrl, { credentials: 'omit' });
-        if (!result.ok) {
-            return null;
-        }
-
-        const html = await result.text();
-        const dom = new DOMParser().parseFromString(html, "text/html");
-        const links = dom.getElementsByTagName("link");
-
-        for (let link of links) {
-            if (link.getAttribute("rel") === "image_src" && link.hasAttribute("href")) {
-                const href = link.getAttribute("href")!;
-                return href.replace("=s900", "=s16");
-            }
-        }
-
-        return null;
-    } catch (e) {
-        return null;
-    }
-}
-
 export async function fetchFavicon(url: string) {
     try {
-        const customIcon = window.settings.getIconStatus()
-        if (customIcon) {
-            if (Url.parse(url).host === "www.youtube.com" && url.includes("channel")) {
-                return fetchYTChannelIcon(url)
-            }
-        }
         url = url.split("/").slice(0, 3).join("/")
         let result = await fetch(url, { credentials: "omit" })
         if (result.ok) {
@@ -170,7 +115,6 @@ export async function fetchFavicon(url: string) {
                     let parsedUrl = Url.parse(url)
                     if (href.startsWith("//")) return parsedUrl.protocol + href
                     else if (href.startsWith("/")) return url + href
-                    else if (href.startsWith("favicon")) return url + '/' + href
                     else return href
                 }
             }
@@ -207,19 +151,12 @@ export function htmlDecode(input: string) {
     return doc.documentElement.textContent
 }
 
-export function parseYouTubeContent(url: string, views: string, likes: string, content: string){
-    const video = `<iframe width="560" height="315" src="${url}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
-    const views_likes = `<p style="float: left; color: #808080;"><em>${views} views</em></p><p style="float: right; color: #808080;"><em>${likes} likes</em></p>`
-    const _content = `<div style="word-break: break-all;>"<pre>${content.replace(/(?:\r\n|\r|\n)/g, '<br>')}</pre></div>`
-    return `${video}${views_likes}<br><br><br><hr />${_content}`
-}
-
 export const urlTest = (s: string) =>
     /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,63}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi.test(
         s
     )
 
-export const getWindowBreakpoint = () => window.outerWidth >= 1440
+export const getWindowBreakpoint = () => window.innerWidth >= 1440
 
 export const cutText = (s: string, length: number) => {
     return s.length <= length ? s : s.slice(0, length) + "…"
@@ -294,27 +231,11 @@ function byteLength(str: string) {
     return s
 }
 
-export function calculateItemSize(): Promise<number> {
-    return new Promise((resolve, reject) => {
-        let result = 0
-        let openRequest = window.indexedDB.open("itemsDB")
-        openRequest.onsuccess = () => {
-            let db = openRequest.result
-            let objectStore = db.transaction("items").objectStore("items")
-            let cursorRequest = objectStore.openCursor()
-            cursorRequest.onsuccess = () => {
-                let cursor = cursorRequest.result
-                if (cursor) {
-                    result += byteLength(JSON.stringify(cursor.value))
-                    cursor.continue()
-                } else {
-                    resolve(result)
-                }
-            }
-            cursorRequest.onerror = () => reject()
-        }
-        openRequest.onerror = () => reject()
-    })
+export async function calculateItemSize(): Promise<number> {
+    const result = await database.get<{ size: number }>(
+        sql`SELECT page_count * page_size AS size FROM pragma_page_count(), pragma_page_size()`
+    )
+    return result?.size ?? 0
 }
 
 export function validateRegex(regex: string, flags = ""): RegExp {

@@ -59,12 +59,6 @@ const utilsBridge = {
         return (await ipcRenderer.invoke("show-open-dialog", filters)) as string
     },
 
-    fetchImageBytes: async (
-        url: string
-    ): Promise<{ bytes: Uint8Array; type: string }> => {
-        return await ipcRenderer.invoke("fetch-image-bytes", url)
-    },
-
     getCacheSize: async (): Promise<number> => {
         return await ipcRenderer.invoke("get-cache")
     },
@@ -109,6 +103,10 @@ const utilsBridge = {
 
     writeClipboard: (text: string) => {
         ipcRenderer.invoke("write-clipboard", text)
+    },
+
+    fetchImageBytes: (url: string) => {
+        return ipcRenderer.invoke("fetch-image-bytes", url)
     },
 
     closeWindow: () => {
@@ -187,6 +185,8 @@ declare global {
         utils: typeof utilsBridge
         fontList: Array<string>
     }
+    var utils: typeof utilsBridge
+    var fontList: Array<string>
 }
 
 export default utilsBridge

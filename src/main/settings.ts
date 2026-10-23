@@ -1,4 +1,4 @@
-import Store = require("electron-store")
+import Store from "electron-store"
 import {
     SchemaTypes,
     SourceGroup,
@@ -8,8 +8,6 @@ import {
     SyncService,
     ServiceConfigs,
     ViewConfigs,
-    ThumbnailResizeMode,
-    ProxyImageFormat,
 } from "../schema-types"
 import { ipcMain, session, nativeTheme, app } from "electron"
 import { WindowManager } from "./window"
@@ -30,71 +28,6 @@ ipcMain.on("get-menu", event => {
 })
 ipcMain.handle("set-menu", (_, state: boolean) => {
     store.set(MENU_STORE_KEY, state)
-})
-
-const ICON_STATUS_KEY = "customIcon"
-function getIconStatus() {
-    return store.get(ICON_STATUS_KEY, true)
-}
-function toggleIconStatus() {
-    store.set(ICON_STATUS_KEY, !getIconStatus())
-}
-
-const THUMBNAIL_RESIZE_MODE_KEY = "thumbnailResizeMode"
-function getThumbnailResizeMode() {
-    return store.get(THUMBNAIL_RESIZE_MODE_KEY, ThumbnailResizeMode.Proxy)
-}
-ipcMain.on("get-thumbnail-resize-mode", event => {
-    event.returnValue = getThumbnailResizeMode()
-})
-ipcMain.handle(
-    "set-thumbnail-resize-mode",
-    (_, mode: ThumbnailResizeMode) => {
-        store.set(THUMBNAIL_RESIZE_MODE_KEY, mode)
-    }
-)
-
-const IMAGE_ERROR_FALLBACK_PROXY_KEY = "imageErrorFallbackProxy"
-ipcMain.on("get-image-error-fallback-proxy", event => {
-    event.returnValue = store.get(IMAGE_ERROR_FALLBACK_PROXY_KEY, true)
-})
-ipcMain.handle("set-image-error-fallback-proxy", (_, flag: boolean) => {
-    store.set(IMAGE_ERROR_FALLBACK_PROXY_KEY, flag)
-})
-
-const CARD_BLUR_BACKGROUND_KEY = "cardBlurBackground"
-ipcMain.on("get-card-blur-background", event => {
-    event.returnValue = store.get(CARD_BLUR_BACKGROUND_KEY, true)
-})
-ipcMain.handle("set-card-blur-background", (_, flag: boolean) => {
-    store.set(CARD_BLUR_BACKGROUND_KEY, flag)
-})
-
-const THUMBNAIL_PROXY_FORMAT_KEY = "thumbnailProxyFormat"
-ipcMain.on("get-thumbnail-proxy-format", event => {
-    event.returnValue = store.get(
-        THUMBNAIL_PROXY_FORMAT_KEY,
-        ProxyImageFormat.WebP
-    )
-})
-ipcMain.handle("set-thumbnail-proxy-format", (_, format: ProxyImageFormat) => {
-    store.set(THUMBNAIL_PROXY_FORMAT_KEY, format)
-})
-
-const FADE_ANIMATION_SPEED_KEY = "fadeAnimationSpeed"
-ipcMain.on("get-fade-animation-speed", event => {
-    event.returnValue = store.get(FADE_ANIMATION_SPEED_KEY, 1)
-})
-ipcMain.handle("set-fade-animation-speed", (_, speed: number) => {
-    store.set(FADE_ANIMATION_SPEED_KEY, speed)
-})
-
-const AUTO_LOAD_MORE_KEY = "autoLoadMore"
-ipcMain.on("get-auto-load-more", event => {
-    event.returnValue = store.get(AUTO_LOAD_MORE_KEY, true)
-})
-ipcMain.handle("set-auto-load-more", (_, flag: boolean) => {
-    store.set(AUTO_LOAD_MORE_KEY, flag)
 })
 
 const PAC_STORE_KEY = "pac"
@@ -121,12 +54,6 @@ function setProxy(address = null) {
         session.fromPartition("sandbox").setProxy(rules)
     }
 }
-ipcMain.on("get-icon-status", (event) => {
-    event.returnValue = getIconStatus()
-})
-ipcMain.on("toggle-icon-status", () => {
-    toggleIconStatus()
-})
 ipcMain.on("get-proxy-status", event => {
     event.returnValue = getProxyStatus()
 })
@@ -158,14 +85,6 @@ ipcMain.handle("set-theme", (_, theme: ThemeSettings) => {
 })
 ipcMain.on("get-theme-dark-color", event => {
     event.returnValue = nativeTheme.shouldUseDarkColors
-})
-
-const ACCENT_COLOR_STORE_KEY = "accentColor"
-ipcMain.on("get-accent-color", event => {
-    event.returnValue = store.get(ACCENT_COLOR_STORE_KEY, "")
-})
-ipcMain.handle("set-accent-color", (_, color: string) => {
-    store.set(ACCENT_COLOR_STORE_KEY, color)
 })
 export function setThemeListener(manager: WindowManager) {
     nativeTheme.removeAllListeners()
@@ -209,22 +128,6 @@ ipcMain.on("get-font", event => {
 })
 ipcMain.handle("set-font", (_, font: string) => {
     store.set(FONT_STORE_KEY, font)
-})
-
-const APP_FONT_STORE_KEY = "appFontFamily"
-ipcMain.on("get-app-font", event => {
-    event.returnValue = store.get(APP_FONT_STORE_KEY, "")
-})
-ipcMain.handle("set-app-font", (_, font: string) => {
-    store.set(APP_FONT_STORE_KEY, font)
-})
-
-ipcMain.on("get-all-settings", event => {
-    let output = {}
-    for (let [key, value] of store) {
-        output[key] = value
-    }
-    event.returnValue = output
 })
 
 const FETCH_INTEVAL_STORE_KEY = "fetchInterval"
@@ -286,10 +189,32 @@ ipcMain.handle(
     }
 )
 
-const NEDB_STATUS_STORE_KEY = "useNeDB"
-ipcMain.on("get-nedb-status", event => {
-    event.returnValue = store.get(NEDB_STATUS_STORE_KEY, true)
+const SOURCE_RULES_STORE_KEY = "sourceRules"
+ipcMain.on("get-source-rules", event => {
+    event.returnValue = store.get(
+        SOURCE_RULES_STORE_KEY as keyof SchemaTypes,
+        []
+    )
 })
-ipcMain.handle("set-nedb-status", (_, flag: boolean) => {
-    store.set(NEDB_STATUS_STORE_KEY, flag)
+ipcMain.handle("set-source-rules", (_, rules) => {
+    store.set(SOURCE_RULES_STORE_KEY as keyof SchemaTypes, rules)
+})
+
+const DB_VERSION_STORE_KEY = "dbVersion"
+ipcMain.on("get-db-version", event => {
+    event.returnValue = store.get(
+        DB_VERSION_STORE_KEY as keyof SchemaTypes,
+        null
+    )
+})
+ipcMain.handle("set-db-version", (_, version: string) => {
+    store.set(DB_VERSION_STORE_KEY as keyof SchemaTypes, version)
+})
+
+const UNREAD_SOURCES_ONLY_STORE_KEY = "menuUnreadSourcesOnly"
+ipcMain.on("get-unread-sources-only", event => {
+    event.returnValue = store.get(UNREAD_SOURCES_ONLY_STORE_KEY, false)
+})
+ipcMain.handle("set-unread-sources-only", (_, flag: boolean) => {
+    store.set(UNREAD_SOURCES_ONLY_STORE_KEY, flag)
 })

@@ -1,5 +1,7 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin")
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin")
+const { GriffelPlugin } = require("@griffel/webpack-plugin")
+const MiniCssExtractPlugin = require("mini-css-extract-plugin")
 
 module.exports = [
     {
@@ -7,10 +9,7 @@ module.exports = [
         entry: "./src/electron.ts",
         target: "electron-main",
         externals: {
-            "@ghostery/adblocker-electron": "commonjs @ghostery/adblocker-electron",
-            "@ghostery/adblocker": "commonjs @ghostery/adblocker",
-            "@ghostery/adblocker-electron-preload":
-                "commonjs @ghostery/adblocker-electron-preload",
+            "better-sqlite3": "commonjs better-sqlite3",
         },
         module: {
             rules: [
@@ -56,27 +55,6 @@ module.exports = [
     },
     {
         mode: "production",
-        entry: "./src/components/utils/image-resize-worker.ts",
-        target: "webworker",
-        module: {
-            rules: [
-                {
-                    test: /\.ts$/,
-                    include: /src/,
-                    resolve: {
-                        extensions: [".ts", ".js"],
-                    },
-                    use: [{ loader: "ts-loader" }],
-                },
-            ],
-        },
-        output: {
-            path: __dirname + "/dist",
-            filename: "image-resize-worker.js",
-        },
-    },
-    {
-        mode: "production",
         entry: "./src/index.tsx",
         target: "web",
         devtool: "source-map",
@@ -86,12 +64,25 @@ module.exports = [
         module: {
             rules: [
                 {
+                    test: /\.(js|ts|tsx)$/,
+                    include: [/src/, /node_modules\/@fluentui/],
+                    use: {
+                        loader: "@griffel/webpack-plugin/loader",
+                    },
+                },
+                {
                     test: /\.ts(x?)$/,
                     include: /src/,
                     resolve: {
                         extensions: [".ts", ".tsx", ".js"],
                     },
-                    use: [{ loader: "ts-loader" }],
+                    use: {
+                        loader: "ts-loader",
+                    },
+                },
+                {
+                    test: /\.css$/,
+                    use: [MiniCssExtractPlugin.loader, "css-loader"],
                 },
             ],
         },
@@ -100,10 +91,15 @@ module.exports = [
             filename: "index.js",
         },
         plugins: [
-            new NodePolyfillPlugin(),
+            new NodePolyfillPlugin({
+                additionalAliases: ["process"],
+                excludeAliases: ["Buffer"],
+            }),
             new HtmlWebpackPlugin({
                 template: "./src/index.html",
             }),
+            new MiniCssExtractPlugin(),
+            new GriffelPlugin(),
         ],
     },
 ]

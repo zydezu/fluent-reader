@@ -8,7 +8,6 @@ import {
     IContextualMenuProps,
     FocusZone,
     ContextualMenuItemType,
-    Spinner,
     Icon,
     Link,
 } from "@fluentui/react"
@@ -19,7 +18,7 @@ import {
 } from "../scripts/models/source"
 import { shareSubmenu } from "./context-menu"
 import { platformCtrl, decodeFetchResponse } from "../scripts/utils"
-import { proxifyIcon } from "./utils/proxied-image"
+import { Spinner } from "@fluentui/react-components"
 
 const FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 17, 18, 19, 20]
 
@@ -361,7 +360,7 @@ class Article extends React.Component<ArticleProps, ArticleState> {
                     <p className="date">
                         {this.props.item.date.toLocaleString(
                             this.props.locale,
-                            { hour12: !["zh-CN", "zh-TW", "en-GB", "fr-FR", "de", "tr", "ja", "sv", "uk", "it", "nl", "ko", "ru", "pt-BR", "pt-PT", "cs"].includes(this.props.locale) }
+                            { hour12: !this.props.locale.startsWith("zh") }
                         )}
                     </p>
                     <article></article>
@@ -390,13 +389,11 @@ class Article extends React.Component<ArticleProps, ArticleState> {
                                 this.props.source.iconurl && (
                                     <img
                                         className="favicon"
-                                        src={proxifyIcon(
-                                            this.props.source.iconurl
-                                        )}
+                                        src={this.props.source.iconurl}
                                     />
                                 )
                             ) : (
-                                <Spinner size={1} />
+                                <Spinner size="extra-tiny" />
                             )}
                             {this.props.source.name}
                             {this.props.item.creator && (
@@ -464,7 +461,7 @@ class Article extends React.Component<ArticleProps, ArticleState> {
                 <Stack horizontal horizontalAlign="end" style={{ width: 112 }}>
                     <CommandBarButton
                         title={intl.get("close")}
-                        iconProps={{ iconName: "Cancel" }}
+                        iconProps={{ iconName: "BackToWindow" }}
                         onClick={this.props.dismiss}
                     />
                 </Stack>
