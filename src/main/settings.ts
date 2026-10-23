@@ -279,3 +279,35 @@ ipcMain.on("get-unread-sources-only", event => {
 ipcMain.handle("set-unread-sources-only", (_, flag: boolean) => {
     store.set(UNREAD_SOURCES_ONLY_STORE_KEY, flag)
 })
+
+const AUTO_LOAD_MORE_STORE_KEY = "autoLoadMore"
+ipcMain.on("get-auto-load-more", event => {
+    event.returnValue = store.get(AUTO_LOAD_MORE_STORE_KEY, true)
+})
+ipcMain.handle("set-auto-load-more", (_, flag: boolean) => {
+    store.set(AUTO_LOAD_MORE_STORE_KEY, flag)
+})
+
+const APP_FONT_STORE_KEY = "appFont"
+ipcMain.on("get-app-font", event => {
+    event.returnValue = store.get(APP_FONT_STORE_KEY, "")
+})
+ipcMain.handle("set-app-font", (_, font: string) => {
+    store.set(APP_FONT_STORE_KEY, font)
+})
+
+const FADE_SPEED_STORE_KEY = "fadeAnimationSpeed"
+ipcMain.on("get-fade-animation-speed", event => {
+    event.returnValue = store.get(FADE_SPEED_STORE_KEY, 1)
+})
+ipcMain.handle("set-fade-animation-speed", (_, speed: number) => {
+    store.set(FADE_SPEED_STORE_KEY, speed)
+})
+
+const ACCENT_COLOR_STORE_KEY = "accentColor"
+ipcMain.on("get-accent-color", event => {
+    event.returnValue = store.get(ACCENT_COLOR_STORE_KEY, "")
+})
+ipcMain.handle("set-accent-color", (_, color: string) => {
+    store.set(ACCENT_COLOR_STORE_KEY, color)
+})
