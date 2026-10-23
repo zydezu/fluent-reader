@@ -56,8 +56,7 @@ export class FeedFilter {
         if (!(type & FilterType.ShowHidden)) flag = flag && !item.hidden
         if (sources) {
             const source = sources[item.source]
-            if (source && source.imageOnly)
-                flag = flag && Boolean(item.thumb)
+            if (source && source.imageOnly) flag = flag && Boolean(item.thumb)
         }
         if (filter.search !== "") {
             const flags = type & FilterType.CaseInsensitive ? "i" : ""
@@ -107,11 +106,9 @@ export class RSSFeed {
         const filter = feed.filter
         const type = filter.type
         const conditions = [inArray(itemsTable.source, feed.sids)]
-        const imageOnlySids = (sources
-            ? feed.sids.filter(
-                  sid => sources[sid] && sources[sid].imageOnly
-              )
-            : [])
+        const imageOnlySids = sources
+            ? feed.sids.filter(sid => sources[sid] && sources[sid].imageOnly)
+            : []
         if (imageOnlySids.length > 0) {
             conditions.push(
                 sql`(${itemsTable.source} NOT IN (${sql.join(

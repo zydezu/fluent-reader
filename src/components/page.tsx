@@ -61,51 +61,43 @@ const Page: React.FC = () => {
 
     return viewType === ViewType.List ? (
         <>
-            {settingsOn ? null : (
-                <div
-                    key="list"
-                    className={"list-main" + (menuOn ? " menu-on" : "")}>
-                    <ArticleSearch />
-                    <div className="list-feed-container">
-                        <Feed
-                            viewType={viewType}
-                            feedId={feedId}
-                            key={feedId}
+            <div
+                key="list"
+                className={"list-main" + (menuOn ? " menu-on" : "")}>
+                <ArticleSearch />
+                <div className="list-feed-container">
+                    <Feed viewType={viewType} feedId={feedId} key={feedId} />
+                </div>
+                {itemId ? (
+                    <div className="side-article-wrapper">
+                        <Article itemId={itemId} />
+                    </div>
+                ) : (
+                    <div className="side-logo-wrapper">
+                        <img
+                            className="light"
+                            src="icons/logo-outline.svg"
+                            alt="Fluent Reader logo"
+                        />
+                        <img
+                            className="dark"
+                            src="icons/logo-outline-dark.svg"
+                            alt="Fluent Reader logo"
                         />
                     </div>
-                    {itemId ? (
-                        <div className="side-article-wrapper">
-                            <Article itemId={itemId} />
-                        </div>
-                    ) : (
-                        <div className="side-logo-wrapper">
-                            <img
-                                className="light"
-                                src="icons/logo-outline.svg"
-                                alt="Fluent Reader logo"
-                            />
-                            <img
-                                className="dark"
-                                src="icons/logo-outline-dark.svg"
-                                alt="Fluent Reader logo"
-                            />
-                        </div>
-                    )}
-                </div>
-            )}
+                )}
+            </div>
         </>
     ) : (
         <>
-            {settingsOn ? null : (
-                <div key="card" className={"main" + (menuOn ? " menu-on" : "")}>
-                    <ArticleSearch />
-                    <Feed
-                        viewType={viewType}
-                        feedId={feedId}
-                        key={feedId + viewType}
-                    />
-                </div>
-            )}
+            <div key="card" className={"main" + (menuOn ? " menu-on" : "")}>
+                <ArticleSearch />
+                <Feed
+                    viewType={viewType}
+                    feedId={feedId}
+                    key={feedId + viewType}
+                />
+            </div>
             {!!itemId && (
                 <FocusTrapZone
                     disabled={contextOn}
