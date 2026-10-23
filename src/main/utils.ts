@@ -15,7 +15,8 @@ const webviewInputFocused = `(() => {
         element.matches("input, textarea, select, iframe, frame") || element.isContentEditable
     )
 })()`
-import { version as repoVersion } from "../../package.json"
+import packageJson from "../../package.json"
+const repoVersion = packageJson.version
 
 // The built dist/ output has no package.json of its own, so outside of a
 // packaged app.asar (which electron-builder generates one for),
