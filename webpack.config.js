@@ -11,6 +11,11 @@ module.exports = [
         target: "electron-main",
         externals: {
             "better-sqlite3": "commonjs better-sqlite3",
+            "@ghostery/adblocker-electron":
+                "commonjs @ghostery/adblocker-electron",
+            "@ghostery/adblocker": "commonjs @ghostery/adblocker",
+            "@ghostery/adblocker-electron-preload":
+                "commonjs @ghostery/adblocker-electron-preload",
         },
         module: {
             rules: [
@@ -58,6 +63,27 @@ module.exports = [
     {
         mode: "production",
         stats: "minimal",
+        entry: "./src/components/utils/image-resize-worker.ts",
+        target: "webworker",
+        module: {
+            rules: [
+                {
+                    test: /\.ts$/,
+                    include: /src/,
+                    resolve: {
+                        extensions: [".ts", ".js"],
+                    },
+                    use: [{ loader: "ts-loader" }],
+                },
+            ],
+        },
+        output: {
+            path: __dirname + "/dist",
+            filename: "image-resize-worker.js",
+        },
+    },
+    {
+        mode: "production",
         entry: "./src/index.tsx",
         target: "web",
         devtool: "source-map",
