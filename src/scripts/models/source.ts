@@ -469,7 +469,7 @@ export function updateFavicon(
             sids = sids.filter(sid => sid in initSources)
         }
         const promises = sids.map(async sid => {
-            const { originUrl, url }= initSources[sid]
+            const { originUrl, url } = initSources[sid]
             const source = getState().sources[sid]
             let favicon = (await fetchFavicon(originUrl || url)) || ""
             if (

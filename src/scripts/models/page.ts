@@ -126,7 +126,9 @@ export function reselectPage(): AppThunk {
         } else if (type === "s") {
             const source = state.sources[parseInt(index)]
             if (source && !source.hidden) {
-                dispatch(selectSources([source.sid], menuKey, source.name, true))
+                dispatch(
+                    selectSources([source.sid], menuKey, source.name, true)
+                )
                 return
             }
         }
@@ -357,8 +359,8 @@ export function pageReducer(
                         ...state,
                         itemId:
                             action.feed._id === state.feedId &&
-                                action.items.filter(i => i._id === state.itemId)
-                                    .length === 0
+                            action.items.filter(i => i._id === state.itemId)
+                                .length === 0
                                 ? null
                                 : state.itemId,
                     }

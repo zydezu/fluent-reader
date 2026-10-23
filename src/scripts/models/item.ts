@@ -58,7 +58,9 @@ export class RSSItem {
             : intl.get("article.untitled")
         this.link = item.link || ""
         this.fetchedDate = new Date()
-        const parsedDate = new Date(item.isoDate ?? item.pubDate ?? this.fetchedDate)
+        const parsedDate = new Date(
+            item.isoDate ?? item.pubDate ?? this.fetchedDate
+        )
         // Fall back to the fetch time when a feed supplies an unparseable date,
         // otherwise the NaN timestamp corrupts date ordering and indexing.
         this.date = isNaN(parsedDate.getTime()) ? this.fetchedDate : parsedDate
@@ -112,11 +114,24 @@ export class RSSItem {
             delete item.thumb
         }
         if (parsed.videoMeta) {
-            item.thumb = item.thumb ? item.thumb : parsed.videoMeta["media:thumbnail"][0].$.url
-            item.snippet = item.snippet ? item.snippet : parsed.videoMeta["media:description"][0] || ""
-            const views = parsed.videoMeta["media:community"][0]["media:statistics"][0].$.views
-            const likes = parsed.videoMeta["media:community"][0]["media:starRating"][0].$.count
-            item.content = parseYouTubeContent(item.link.replace("watch?v=","embed/"), views, likes, item.snippet)
+            item.thumb = item.thumb
+                ? item.thumb
+                : parsed.videoMeta["media:thumbnail"][0].$.url
+            item.snippet = item.snippet
+                ? item.snippet
+                : parsed.videoMeta["media:description"][0] || ""
+            const views =
+                parsed.videoMeta["media:community"][0]["media:statistics"][0].$
+                    .views
+            const likes =
+                parsed.videoMeta["media:community"][0]["media:starRating"][0].$
+                    .count
+            item.content = parseYouTubeContent(
+                item.link.replace("watch?v=", "embed/"),
+                views,
+                likes,
+                item.snippet
+            )
         }
     }
 }

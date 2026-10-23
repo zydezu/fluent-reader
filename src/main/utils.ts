@@ -203,7 +203,10 @@ export function setUtilsListeners(manager: WindowManager) {
             throw new Error(`Failed to fetch image: ${response.status}`)
         }
         const buffer = await response.arrayBuffer()
-        return { bytes: new Uint8Array(buffer), type: response.headers.get("content-type") }
+        return {
+            bytes: new Uint8Array(buffer),
+            type: response.headers.get("content-type"),
+        }
     })
 
     ipcMain.handle("get-cache", async () => {

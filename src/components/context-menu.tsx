@@ -13,7 +13,11 @@ import {
     ContextualMenuItemType,
     DirectionalHint,
 } from "office-ui-fabric-react/lib/ContextualMenu"
-import { closeContextMenu, ContextMenuType, toggleSettings } from "../scripts/models/app"
+import {
+    closeContextMenu,
+    ContextMenuType,
+    toggleSettings,
+} from "../scripts/models/app"
 import {
     fetchItems,
     markAllRead,

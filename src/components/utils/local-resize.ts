@@ -58,19 +58,16 @@ export function resizeImageLocally(
     const cached = cache.get(key)
     if (cached) return cached
 
-    const promise = window.utils
-        .fetchImageBytes(src)
-        .then(
-            ({ bytes, type }) =>
-                new Promise<string>((resolve, reject) => {
-                    const id = nextId++
-                    pending.set(id, { resolve, reject })
-                    getWorker().postMessage(
-                        { id, bytes, type, width, height },
-                        [bytes.buffer]
-                    )
-                })
-        )
+    const promise = window.utils.fetchImageBytes(src).then(
+        ({ bytes, type }) =>
+            new Promise<string>((resolve, reject) => {
+                const id = nextId++
+                pending.set(id, { resolve, reject })
+                getWorker().postMessage({ id, bytes, type, width, height }, [
+                    bytes.buffer,
+                ])
+            })
+    )
 
     promise.catch(() => cache.delete(key))
     evictIfNeeded()

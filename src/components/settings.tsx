@@ -63,10 +63,7 @@ class Settings extends React.Component<SettingsProps, SettingsState> {
                 document.body.removeEventListener("keydown", this.onKeyDown)
             }
         }
-        if (
-            this.props.sids !== prevProps.sids &&
-            this.props.sids.length > 0
-        ) {
+        if (this.props.sids !== prevProps.sids && this.props.sids.length > 0) {
             this.setState({ activeTab: SettingsTabKeys.Sources })
         }
     }
@@ -88,9 +85,7 @@ class Settings extends React.Component<SettingsProps, SettingsState> {
 
     render = () =>
         this.props.display && (
-            <div
-                className="settings-container"
-                onClick={this.props.close}>
+            <div className="settings-container" onClick={this.props.close}>
                 <div
                     className={"settings " + AnimationClassNames.slideUpIn20}
                     onClick={e => e.stopPropagation()}>

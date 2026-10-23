@@ -54,7 +54,7 @@
     "dependencies": {
         "@ghostery/adblocker-electron": "^2.20.1",
         "@ghostery/adblocker-electron-preload": "^2.20.1",
-        "node-polyfill-webpack-plugin": "^2.0.1"
+        "node-polyfill-webpack-plugin": "^4.1.0"
     },
     "allowScripts": {
         "electron-winstaller@5.4.0": true,

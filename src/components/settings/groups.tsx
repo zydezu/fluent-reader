@@ -130,23 +130,29 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
             onRender: (g: SourceGroup) =>
                 g.isMultiple ? (
                     <span className="group-favicon-stack">
-                        {g.sids.slice(0, 4).map(
-                            sid =>
-                                this.props.sources[sid] &&
-                                this.props.sources[sid].iconurl && (
-                                    <img
-                                        key={sid}
-                                        src={proxifyIcon(this.props.sources[sid].iconurl)}
-                                        className="favicon"
-                                    />
-                                )
-                        )}
+                        {g.sids
+                            .slice(0, 4)
+                            .map(
+                                sid =>
+                                    this.props.sources[sid] &&
+                                    this.props.sources[sid].iconurl && (
+                                        <img
+                                            key={sid}
+                                            src={proxifyIcon(
+                                                this.props.sources[sid].iconurl
+                                            )}
+                                            className="favicon"
+                                        />
+                                    )
+                            )}
                     </span>
                 ) : (
                     this.props.sources[g.sids[0]] &&
                     this.props.sources[g.sids[0]].iconurl && (
                         <img
-                            src={proxifyIcon(this.props.sources[g.sids[0]].iconurl)}
+                            src={proxifyIcon(
+                                this.props.sources[g.sids[0]].iconurl
+                            )}
                             className="favicon"
                         />
                     )
@@ -200,7 +206,9 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
             minWidth: 16,
             maxWidth: 16,
             onRender: (s: RSSSource) =>
-                s.iconurl && <img src={proxifyIcon(s.iconurl)} className="favicon" />,
+                s.iconurl && (
+                    <img src={proxifyIcon(s.iconurl)} className="favicon" />
+                ),
         },
         {
             key: "name",
@@ -477,9 +485,7 @@ class GroupsTab extends React.Component<GroupsTabProps, GroupsTabState> {
                         </Stack.Item>
                         <Stack.Item>
                             <DefaultButton
-                                disabled={
-                                    this.state.addSourceSids.length === 0
-                                }
+                                disabled={this.state.addSourceSids.length === 0}
                                 onClick={this.addExistingSource}
                                 text={intl.get("add")}
                             />

@@ -180,7 +180,10 @@ class RulesTab extends React.Component<RulesTabProps, RulesTabState> {
     onRenderSourceOption = (option: IDropdownOption) => (
         <div>
             {option.data && option.data.icon && (
-                <img src={proxifyIcon(option.data.icon)} className="favicon dropdown" />
+                <img
+                    src={proxifyIcon(option.data.icon)}
+                    className="favicon dropdown"
+                />
             )}
             <span>{option.text}</span>
         </div>

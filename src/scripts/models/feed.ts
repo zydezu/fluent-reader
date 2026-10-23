@@ -197,7 +197,11 @@ export class RSSFeed {
             )
         )
         const merged = results.reduce((a, b) =>
-            mergeSortedArrays(a, b, (x, y) => y.date.getTime() - x.date.getTime())
+            mergeSortedArrays(
+                a,
+                b,
+                (x, y) => y.date.getTime() - x.date.getTime()
+            )
         )
         return merged.slice(skip, head)
     }

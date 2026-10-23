@@ -63,7 +63,9 @@ export class Menu extends React.Component<MenuProps> {
             ],
         },
         {
-            name: intl.get("menu.subscriptions") + (` (${this.props.groups.length})`),
+            name:
+                intl.get("menu.subscriptions") +
+                ` (${this.props.groups.length})`,
             links: this.props.groups
                 .filter(g => g.sids.length > 0)
                 .map(g => {

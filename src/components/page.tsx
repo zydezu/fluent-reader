@@ -29,9 +29,7 @@ class Page extends React.Component<PageProps> {
             <>
                 <div
                     key="card"
-                    className={
-                        "main" + (this.props.menuOn ? " menu-on" : "")
-                    }>
+                    className={"main" + (this.props.menuOn ? " menu-on" : "")}>
                     <ArticleSearch />
                     {this.props.feeds.map(fid => (
                         <FeedContainer

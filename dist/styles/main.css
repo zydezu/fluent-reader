@@ -203,7 +203,7 @@ div[role="toolbar"] {
     align-items: center;
 }
 
-.settings .ms-Pivot-linkContent>* {
+.settings .ms-Pivot-linkContent > * {
     margin-left: 0 !important;
 }
 
@@ -244,7 +244,7 @@ div[role="tabpanel"] {
     margin: 12px 0 4px;
 }
 
-.tab-body>.settings-category:first-child {
+.tab-body > .settings-category:first-child {
     margin-top: 0;
 }
 
@@ -335,7 +335,7 @@ div[role="tabpanel"] {
     margin: 14px 0 6px;
 }
 
-.tab-body>.ms-Label:first-child {
+.tab-body > .ms-Label:first-child {
     margin-top: 0;
 }
 
@@ -423,7 +423,7 @@ img.favicon.dropdown {
     color: var(--black);
 }
 
-.settings-about>* {
+.settings-about > * {
     margin: 0 !important;
     -webkit-user-drag: none;
 }
@@ -559,12 +559,12 @@ body.darwin .list-main .article-search {
 }
 
 @media (min-width: 1440px) {
-    #root>nav.menu-on {
+    #root > nav.menu-on {
         padding-left: 296px;
     }
 
-    #root>nav.menu-on span.title,
-    body.darwin #root>nav.menu-on span.title {
+    #root > nav.menu-on span.title,
+    body.darwin #root > nav.menu-on span.title {
         max-width: 300px;
     }
 

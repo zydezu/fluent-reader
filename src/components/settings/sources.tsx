@@ -149,7 +149,9 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             minWidth: 16,
             maxWidth: 16,
             onRender: (s: RSSSource) =>
-                s.iconurl && <img src={proxifyIcon(s.iconurl)} className="favicon" />,
+                s.iconurl && (
+                    <img src={proxifyIcon(s.iconurl)} className="favicon" />
+                ),
         },
         {
             key: "name",
@@ -576,9 +578,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                                     </Stack.Item>
                                 )}
                                 {this.state.urlSaving && (
-                                    <Stack.Item
-                                        verticalFill
-                                        align="center">
+                                    <Stack.Item verticalFill align="center">
                                         <Spinner size={SpinnerSize.small} />
                                     </Stack.Item>
                                 )}
@@ -708,9 +708,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                         <Stack horizontal wrap verticalAlign="start">
                             <Stack.Item>
                                 <Dropdown
-                                    placeholder={intl.get(
-                                        "groups.chooseGroup"
-                                    )}
+                                    placeholder={intl.get("groups.chooseGroup")}
                                     selectedKey={this.state.bulkGroupIndex}
                                     options={this.groupOptionsWithUngrouped()}
                                     onChange={(_, option) =>

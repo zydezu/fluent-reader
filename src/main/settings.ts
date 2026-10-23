@@ -47,12 +47,9 @@ function getThumbnailResizeMode() {
 ipcMain.on("get-thumbnail-resize-mode", event => {
     event.returnValue = getThumbnailResizeMode()
 })
-ipcMain.handle(
-    "set-thumbnail-resize-mode",
-    (_, mode: ThumbnailResizeMode) => {
-        store.set(THUMBNAIL_RESIZE_MODE_KEY, mode)
-    }
-)
+ipcMain.handle("set-thumbnail-resize-mode", (_, mode: ThumbnailResizeMode) => {
+    store.set(THUMBNAIL_RESIZE_MODE_KEY, mode)
+})
 
 const IMAGE_ERROR_FALLBACK_PROXY_KEY = "imageErrorFallbackProxy"
 ipcMain.on("get-image-error-fallback-proxy", event => {
@@ -121,7 +118,7 @@ function setProxy(address = null) {
         session.fromPartition("sandbox").setProxy(rules)
     }
 }
-ipcMain.on("get-icon-status", (event) => {
+ipcMain.on("get-icon-status", event => {
     event.returnValue = getIconStatus()
 })
 ipcMain.on("toggle-icon-status", () => {
