@@ -7,6 +7,7 @@ module.exports = [
         entry: "./src/electron.ts",
         target: "electron-main",
         externals: {
+            "better-sqlite3": "commonjs better-sqlite3",
             "@ghostery/adblocker-electron":
                 "commonjs @ghostery/adblocker-electron",
             "@ghostery/adblocker": "commonjs @ghostery/adblocker",
