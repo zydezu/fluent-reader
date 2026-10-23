@@ -279,3 +279,11 @@ ipcMain.on("get-unread-sources-only", event => {
 ipcMain.handle("set-unread-sources-only", (_, flag: boolean) => {
     store.set(UNREAD_SOURCES_ONLY_STORE_KEY, flag)
 })
+
+const AUTO_LOAD_MORE_STORE_KEY = "autoLoadMore"
+ipcMain.on("get-auto-load-more", event => {
+    event.returnValue = store.get(AUTO_LOAD_MORE_STORE_KEY, true)
+})
+ipcMain.handle("set-auto-load-more", (_, flag: boolean) => {
+    store.set(AUTO_LOAD_MORE_STORE_KEY, flag)
+})

@@ -151,6 +151,13 @@ const settingsBridge = {
     setUnreadSourcesOnly: (flag: boolean) => {
         ipcRenderer.invoke("set-unread-sources-only", flag)
     },
+
+    getAutoLoadMore: (): boolean => {
+        return ipcRenderer.sendSync("get-auto-load-more")
+    },
+    setAutoLoadMore: (flag: boolean) => {
+        ipcRenderer.invoke("set-auto-load-more", flag)
+    },
 }
 
 declare global {
