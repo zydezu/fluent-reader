@@ -7,6 +7,7 @@ import { ALL, initFeeds } from "../scripts/models/feed"
 import { useAppSelector, useAppDispatch } from "../scripts/reducer"
 import { toggleMenu, openGroupMenu } from "../scripts/models/app"
 import { toggleGroupExpansion } from "../scripts/models/group"
+import { proxifyIcon } from "./utils/proxied-image"
 import {
     selectAllArticles,
     selectSources,
@@ -249,7 +250,7 @@ export const Menu: React.FC = () => {
                         <img
                             alt=""
                             className={menuClasses.favicon}
-                            src={s.iconurl}
+                            src={proxifyIcon(s.iconurl)}
                         />
                     ) : undefined
                 }
@@ -351,7 +352,8 @@ export const Menu: React.FC = () => {
                                     verticalAlign="center"
                                     className={menuClasses.subsHeaderStack}>
                                     <span className={menuClasses.subsHeader}>
-                                        {intl.get("menu.subscriptions")}
+                                        {intl.get("menu.subscriptions") +
+                                            ` (${groups.length})`}
                                     </span>
                                     <ToggleButton
                                         aria-label={

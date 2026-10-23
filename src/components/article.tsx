@@ -25,6 +25,7 @@ import {
 } from "../scripts/models/source"
 import { shareSubmenu } from "./context-menu"
 import { platformCtrl } from "../scripts/utils"
+import { proxifyIcon } from "./utils/proxied-image"
 import { Spinner } from "@fluentui/react-components"
 import { useAppDispatch, useAppSelector } from "../scripts/reducer"
 import { dismissItem, showOffsetItem } from "../scripts/models/page"
@@ -254,7 +255,24 @@ function Article({ itemId }: ArticleProps) {
                     <p className="title">{item.title}</p>
                     <p className="date">
                         {item.date.toLocaleString(locale, {
-                            hour12: !locale.startsWith("zh"),
+                            hour12: ![
+                                "zh-CN",
+                                "zh-TW",
+                                "en-GB",
+                                "fr-FR",
+                                "de",
+                                "tr",
+                                "ja",
+                                "sv",
+                                "uk",
+                                "it",
+                                "nl",
+                                "ko",
+                                "ru",
+                                "pt-BR",
+                                "pt-PT",
+                                "cs",
+                            ].includes(locale),
                         })}
                     </p>
                     <article></article>
@@ -283,7 +301,7 @@ function Article({ itemId }: ArticleProps) {
                                 source.iconurl && (
                                     <img
                                         className="favicon"
-                                        src={source.iconurl}
+                                        src={proxifyIcon(source.iconurl)}
                                     />
                                 )
                             ) : (
@@ -353,7 +371,7 @@ function Article({ itemId }: ArticleProps) {
                 <Stack horizontal horizontalAlign="end" style={{ width: 112 }}>
                     <CommandBarButton
                         title={intl.get("close")}
-                        iconProps={{ iconName: "BackToWindow" }}
+                        iconProps={{ iconName: "Cancel" }}
                         onClick={dismiss}
                     />
                 </Stack>
