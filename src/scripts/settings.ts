@@ -46,3 +46,26 @@ export async function exportAll() {
 export async function importAll(): Promise<boolean> {
     return await window.db.importAll()
 }
+
+
+let currentAppFont: string = ""
+function applyBodyFont() { document.body.style.fontFamily = currentAppFont || "" }
+
+export function getAccentColor(): string { return window.settings.getAccentColor() }
+export function setAccentColor(color: string) { window.settings.setAccentColor(color) }
+
+export function getAppFont(): string { return window.settings.getAppFont() }
+export function setAppFont(font: string) {
+    window.settings.setAppFont(font)
+    currentAppFont = font
+    applyBodyFont()
+}
+
+export function getFadeAnimationSpeed(): number { return window.settings.getFadeAnimationSpeed() }
+export function setFadeAnimationSpeed(speed: number) {
+    window.settings.setFadeAnimationSpeed(speed)
+    document.documentElement.style.setProperty("--fade-speed-multiplier", String(speed))
+}
+
+currentAppFont = getAppFont()
+document.documentElement.style.setProperty("--fade-speed-multiplier", String(getFadeAnimationSpeed()))

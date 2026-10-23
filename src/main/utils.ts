@@ -3,7 +3,7 @@ import * as path from "path"
 import { ElectronBlocker } from "@ghostery/adblocker-electron"
 import { WindowManager } from "./window"
 import * as fs from "node:fs"
-import { ImageCallbackTypes, TouchBarTexts } from "../schema-types"
+import { ImageCallbackTypes, StoredRules, TouchBarTexts } from "../schema-types"
 import { initMainTouchBar } from "./touchbar"
 import * as fontList from "font-list"
 import packageJson from "../../package.json"
@@ -15,12 +15,6 @@ const repoVersion = packageJson.version
 // instead of the app's version.
 export const getAppVersion = () =>
     app.isPackaged ? app.getVersion() : repoVersion
-
-export function transformLovefieldRules(
-    sources: Record<string, unknown>[]
-): any {
-    return {}
-}
 
 const adblockerSessions = new Set<Electron.Session>()
 let adblocker: ElectronBlocker | null = null
@@ -61,6 +55,16 @@ async function initAdblocker() {
         console.error("Adblocker init failed", e)
     }
 }
+
+const webviewInputFocused = `(() => {
+    let element = document.activeElement
+    while (element?.shadowRoot?.activeElement) {
+        element = element.shadowRoot.activeElement
+    }
+    return !!element && (
+        element.matches("input, textarea, select, iframe, frame") || element.isContentEditable
+    )
+})()`
 
 export function setUtilsListeners(manager: WindowManager) {
     initAdblocker()
@@ -210,7 +214,10 @@ export function setUtilsListeners(manager: WindowManager) {
             throw new Error(`Failed to fetch image: ${response.status}`)
         }
         const buffer = await response.arrayBuffer()
-        return { bytes: new Uint8Array(buffer), type: response.headers.get("content-type") }
+        return {
+            bytes: new Uint8Array(buffer),
+            type: response.headers.get("content-type"),
+        }
     })
 
     ipcMain.handle("get-cache", async () => {
@@ -303,10 +310,34 @@ export function setUtilsListeners(manager: WindowManager) {
                         })
                 }
             })
-            contents.on("before-input-event", (_, input) => {
-                if (manager.hasWindow()) {
-                    let contents = manager.mainWindow.webContents
-                    contents.send("webview-keydown", input)
+            contents.on("before-input-event", async (_, input) => {
+                if (input.type !== "keyDown" || !manager.hasWindow()) return
+                const mainWindow = manager.mainWindow
+                const url = contents.getURL()
+                if (url.startsWith("https://") || url.startsWith("http://")) {
+                    // Inspect the guest's focused frame, including iframe editors.
+                    // Leave the original key event alone so typing works normally.
+                    // Electron can report no focused frame for a focused webview.
+                    // An iframe host in the fallback document keeps its own keys.
+                    const frame = contents.focusedFrame || contents.mainFrame
+                    try {
+                        const inputFocused = await frame.executeJavaScript(
+                            webviewInputFocused
+                        )
+                        if (
+                            inputFocused ||
+                            contents.isDestroyed() ||
+                            frame.isDestroyed() ||
+                            contents.getURL() !== url
+                        )
+                            return
+                    } catch {
+                        // The frame may disappear while navigating or closing.
+                        return
+                    }
+                }
+                if (manager.hasWindow() && manager.mainWindow === mainWindow) {
+                    mainWindow.webContents.send("webview-keydown", input)
                 }
             })
         }
@@ -380,4 +411,27 @@ export function setUtilsListeners(manager: WindowManager) {
             disableQuoting: true,
         })
     })
+}
+
+export function transformLovefieldRules(
+    sources: Record<string, unknown>[]
+): StoredRules {
+    const storedRules: StoredRules = {}
+    for (const source of sources) {
+        const rules = source.rules as Record<string, unknown>[] | undefined
+        if (!Array.isArray(rules) || rules.length === 0) continue
+        storedRules[`source:${source.sid as number}`] = rules.map(rule => {
+            const filter = rule.filter as Record<string, unknown>
+            const actions = rule.actions as Record<string, boolean>
+            return {
+                filter: (filter?.type as number) ?? 0,
+                search: (filter?.search as string) ?? "",
+                match: rule.match as boolean,
+                actions: Object.entries(actions || {}).map(
+                    ([type, flag]) => `${type}-${flag}`
+                ),
+            }
+        })
+    }
+    return storedRules
 }
