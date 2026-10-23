@@ -1,10 +1,12 @@
 import { SourceGroup } from "../../schema-types"
 import intl from "react-intl-universal"
-import { eq, and, or, isNull, max, count } from "drizzle-orm"
+import { eq, and, or, isNull, isNotNull, max, count, inArray } from "drizzle-orm"
 import { database, sourcesTable, itemsTable, init } from "../db"
 import { findValidDate } from "../date"
 import {
     fetchFavicon,
+    fetchYTChannelIcon,
+    htmlDecode,
     ActionStatus,
     AppThunk,
     parseRSS,
@@ -44,6 +46,7 @@ export const enum SourceTextDirection {
 export class RSSSource {
     sid: number
     url: string
+    originUrl?: string
     iconurl?: string
     name: string
     openTarget: SourceOpenTarget
@@ -68,8 +71,9 @@ export class RSSSource {
 
     static async fetchMetaData(source: RSSSource) {
         let feed = await parseRSS(source.url)
+        source.originUrl = feed.link
         if (!source.name) {
-            if (feed.title) source.name = feed.title.trim()
+            if (feed.title) source.name = htmlDecode(feed.title.trim())
             source.name = source.name || intl.get("sources.untitled")
         }
         return feed
@@ -233,17 +237,55 @@ export function initSourcesFailure(err): SourceActionTypes {
 }
 
 async function unreadCount(sources: SourceState): Promise<SourceState> {
-    const rows = await database
-        .select({
-            source: itemsTable.source,
-            count: count(itemsTable._id),
-        })
-        .from(itemsTable)
-        .where(eq(itemsTable.hasRead, false))
-        .groupBy(itemsTable.source)
-    for (const row of rows) {
-        if (sources[row.source]) {
-            sources[row.source].unreadCount = row.count
+    const allSids = Object.keys(sources).map(Number)
+    const imageOnlySids = allSids.filter(sid => sources[sid].imageOnly)
+    const normalSids = allSids.filter(sid => !sources[sid].imageOnly)
+    const queries: Promise<{ source: number; count: number }[]>[] = []
+    if (normalSids.length > 0) {
+        queries.push(
+            database
+                .select({
+                    source: itemsTable.source,
+                    count: count(itemsTable._id),
+                })
+                .from(itemsTable)
+                .where(
+                    and(
+                        eq(itemsTable.hasRead, false),
+                        inArray(itemsTable.source, normalSids)
+                    )
+                )
+                .groupBy(itemsTable.source) as Promise<
+                { source: number; count: number }[]
+            >
+        )
+    }
+    if (imageOnlySids.length > 0) {
+        queries.push(
+            database
+                .select({
+                    source: itemsTable.source,
+                    count: count(itemsTable._id),
+                })
+                .from(itemsTable)
+                .where(
+                    and(
+                        eq(itemsTable.hasRead, false),
+                        inArray(itemsTable.source, imageOnlySids),
+                        isNotNull(itemsTable.thumb)
+                    )
+                )
+                .groupBy(itemsTable.source) as Promise<
+                { source: number; count: number }[]
+            >
+        )
+    }
+    const results = await Promise.all(queries)
+    for (const rows of results) {
+        for (const row of rows) {
+            if (sources[row.source]) {
+                sources[row.source].unreadCount = row.count
+            }
         }
     }
     return sources
@@ -334,6 +376,7 @@ export function insertSource(source: RSSSource): AppThunk<Promise<RSSSource>> {
                         fetchFrequency: source.fetchFrequency || 0,
                         textDir: source.textDir || 0,
                         hidden: source.hidden || false,
+                        imageOnly: source.imageOnly || false,
                     })
                     resolve(source)
                 } catch (err) {
@@ -426,6 +469,7 @@ export function updateSource(source: RSSSource): AppThunk<Promise<void>> {
             fetchFrequency: source.fetchFrequency || 0,
             textDir: source.textDir || 0,
             hidden: source.hidden || false,
+            imageOnly: source.imageOnly || false,
         }
         await database
             .insert(sourcesTable)
@@ -508,8 +552,22 @@ export function updateFavicon(
             sids = sids.filter(sid => sid in initSources)
         }
         const promises = sids.map(async sid => {
-            const url = initSources[sid].url
-            let favicon = (await fetchFavicon(url)) || ""
+            const { originUrl, url } = initSources[sid]
+            const customIcon = true
+            let favicon = ""
+            if (customIcon) {
+                try {
+                    if (
+                        new URL(url).host === "www.youtube.com" &&
+                        url.includes("channel")
+                    ) {
+                        favicon = (await fetchYTChannelIcon(url)) || ""
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+            if (!favicon) favicon = (await fetchFavicon(originUrl || url)) || ""
             const source = getState().sources[sid]
             if (
                 source &&
