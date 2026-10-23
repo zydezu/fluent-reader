@@ -96,7 +96,8 @@ class AppTab extends React.Component<AppTabProps, AppTabState> {
             duplicatesStatus: null,
             removingDuplicates: false,
             iconStatus: window.settings.getIconStatus(),
-            thumbnailResizeMode: window.settings.getThumbnailResizeMode(),
+            thumbnailResizeMode:
+                window.settings.getThumbnailResizeMode() as unknown as ThumbnailResizeMode,
             accentColor: getAccentColor(),
             accentPickerOpen: false,
             appFont: getAppFont(),
