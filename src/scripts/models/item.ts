@@ -11,7 +11,12 @@ import {
     AppThunk,
     platformCtrl,
 } from "../utils"
-import { RSSSource, SourceState, updateSource, updateUnreadCounts } from "./source"
+import {
+    RSSSource,
+    SourceState,
+    updateSource,
+    updateUnreadCounts,
+} from "./source"
 import { FeedActionTypes, INIT_FEED, LOAD_MORE, dismissItems } from "./feed"
 import {
     pushNotification,

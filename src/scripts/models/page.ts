@@ -120,9 +120,7 @@ export function reselectPage(): AppThunk {
         if (type === "g") {
             const group = state.groups[parseInt(index)]
             if (group && group.sids.length > 0) {
-                dispatch(
-                    selectSources(group.sids, menuKey, group.name, true)
-                )
+                dispatch(selectSources(group.sids, menuKey, group.name, true))
                 return
             }
         } else if (type === "s") {
