@@ -19,8 +19,46 @@ export function getFontFamilyForLocale(locale: string): string {
 export function setThemeSettings(theme: ThemeSettings) {
     window.settings.setThemeSettings(theme)
 }
+let currentAppFont: string = ""
+function applyBodyFont() {
+    document.body.style.fontFamily = currentAppFont || ""
+}
+
 export function getThemeSettings(): ThemeSettings {
     return window.settings.getThemeSettings()
+}
+
+export function getAccentColor(): string {
+    return window.settings.getAccentColor()
+}
+export function setAccentColor(color: string) {
+    window.settings.setAccentColor(color)
+}
+
+export function getAppFont(): string {
+    return window.settings.getAppFont()
+}
+export function setAppFont(font: string) {
+    window.settings.setAppFont(font)
+    currentAppFont = font
+    applyBodyFont()
+}
+
+export function getFadeAnimationSpeed(): number {
+    return window.settings.getFadeAnimationSpeed()
+}
+
+currentAppFont = getAppFont()
+document.documentElement.style.setProperty(
+    "--fade-speed-multiplier",
+    String(getFadeAnimationSpeed())
+)
+export function setFadeAnimationSpeed(speed: number) {
+    window.settings.setFadeAnimationSpeed(speed)
+    document.documentElement.style.setProperty(
+        "--fade-speed-multiplier",
+        String(speed)
+    )
 }
 
 let autoLoadMoreEnabled: boolean = window.settings.getAutoLoadMore()

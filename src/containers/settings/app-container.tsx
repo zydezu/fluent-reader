@@ -5,7 +5,7 @@ import {
     setupAutoFetch,
 } from "../../scripts/models/app"
 import { database, itemsTable } from "../../scripts/db"
-import { lt, sql } from "drizzle-orm"
+import { lt, sql, inArray } from "drizzle-orm"
 import AppTab from "../../components/settings/app"
 import { importAll } from "../../scripts/settings"
 import { updateUnreadCounts } from "../../scripts/models/source"
@@ -34,6 +34,41 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
         dispatch(saveSettings())
         let cancelled = await importAll()
         if (cancelled) dispatch(saveSettings())
+    },
+    removeDuplicates: async (): Promise<number> => {
+        dispatch(saveSettings())
+        const allItems = await database
+            .select({
+                _id: itemsTable._id,
+                source: itemsTable.source,
+                link: itemsTable.link,
+                title: itemsTable.title,
+                date: itemsTable.date,
+            })
+            .from(itemsTable)
+        allItems.sort((a, b) => a._id - b._id)
+        const seen = new Set<string>()
+        const duplicateIds: number[] = []
+        for (const item of allItems) {
+            const key = item.link
+                ? `${item.source}|${item.link}`
+                : `${item.source}|${item.title}|${new Date(
+                      item.date
+                  ).getTime()}`
+            if (seen.has(key)) {
+                duplicateIds.push(item._id)
+            } else {
+                seen.add(key)
+            }
+        }
+        if (duplicateIds.length > 0) {
+            await database
+                .delete(itemsTable)
+                .where(inArray(itemsTable._id, duplicateIds))
+            await dispatch(updateUnreadCounts())
+        }
+        dispatch(saveSettings())
+        return duplicateIds.length
     },
 })
 

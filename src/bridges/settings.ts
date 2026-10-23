@@ -158,6 +158,62 @@ const settingsBridge = {
     setAutoLoadMore: (flag: boolean) => {
         ipcRenderer.invoke("set-auto-load-more", flag)
     },
+
+    getIconStatus: (): boolean => {
+        return ipcRenderer.sendSync("get-icon-status")
+    },
+    toggleIconStatus: () => {
+        ipcRenderer.invoke("toggle-icon-status")
+    },
+
+    getCardBlurBackground: (): boolean => {
+        return ipcRenderer.sendSync("get-card-blur-background")
+    },
+    setCardBlurBackground: (flag: boolean) => {
+        ipcRenderer.invoke("set-card-blur-background", flag)
+    },
+
+    getThumbnailResizeMode: (): number => {
+        return ipcRenderer.sendSync("get-thumbnail-resize-mode")
+    },
+    setThumbnailResizeMode: (mode: number) => {
+        ipcRenderer.invoke("set-thumbnail-resize-mode", mode)
+    },
+
+    getImageErrorFallbackProxy: (): boolean => {
+        return ipcRenderer.sendSync("get-image-error-fallback-proxy")
+    },
+    setImageErrorFallbackProxy: (flag: boolean) => {
+        ipcRenderer.invoke("set-image-error-fallback-proxy", flag)
+    },
+
+    getThumbnailProxyFormat: (): string => {
+        return ipcRenderer.sendSync("get-thumbnail-proxy-format")
+    },
+    setThumbnailProxyFormat: (format: string) => {
+        ipcRenderer.invoke("set-thumbnail-proxy-format", format)
+    },
+
+    getAccentColor: (): string => {
+        return ipcRenderer.sendSync("get-accent-color")
+    },
+    setAccentColor: (color: string) => {
+        ipcRenderer.invoke("set-accent-color", color)
+    },
+
+    getAppFont: (): string => {
+        return ipcRenderer.sendSync("get-app-font")
+    },
+    setAppFont: (font: string) => {
+        ipcRenderer.invoke("set-app-font", font)
+    },
+
+    getFadeAnimationSpeed: (): number => {
+        return ipcRenderer.sendSync("get-fade-animation-speed")
+    },
+    setFadeAnimationSpeed: (speed: number) => {
+        ipcRenderer.invoke("set-fade-animation-speed", speed)
+    },
 }
 
 declare global {

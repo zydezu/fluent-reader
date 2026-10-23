@@ -287,3 +287,67 @@ ipcMain.on("get-auto-load-more", event => {
 ipcMain.handle("set-auto-load-more", (_, flag: boolean) => {
     store.set(AUTO_LOAD_MORE_STORE_KEY, flag)
 })
+
+const ICON_STATUS_STORE_KEY = "iconStatus"
+ipcMain.on("get-icon-status", event => {
+    event.returnValue = store.get(ICON_STATUS_STORE_KEY, true)
+})
+ipcMain.handle("toggle-icon-status", () => {
+    store.set(ICON_STATUS_STORE_KEY, !store.get(ICON_STATUS_STORE_KEY, true))
+})
+
+const CARD_BLUR_BG_STORE_KEY = "cardBlurBackground"
+ipcMain.on("get-card-blur-background", event => {
+    event.returnValue = store.get(CARD_BLUR_BG_STORE_KEY, true)
+})
+ipcMain.handle("set-card-blur-background", (_, flag: boolean) => {
+    store.set(CARD_BLUR_BG_STORE_KEY, flag)
+})
+
+const THUMB_RESIZE_MODE_STORE_KEY = "thumbnailResizeMode"
+ipcMain.on("get-thumbnail-resize-mode", event => {
+    event.returnValue = store.get(THUMB_RESIZE_MODE_STORE_KEY, 1)
+})
+ipcMain.handle("set-thumbnail-resize-mode", (_, mode: number) => {
+    store.set(THUMB_RESIZE_MODE_STORE_KEY, mode)
+})
+
+const IMG_ERR_FALLBACK_STORE_KEY = "imageErrorFallbackProxy"
+ipcMain.on("get-image-error-fallback-proxy", event => {
+    event.returnValue = store.get(IMG_ERR_FALLBACK_STORE_KEY, true)
+})
+ipcMain.handle("set-image-error-fallback-proxy", (_, flag: boolean) => {
+    store.set(IMG_ERR_FALLBACK_STORE_KEY, flag)
+})
+
+const THUMB_PROXY_FORMAT_STORE_KEY = "thumbnailProxyFormat"
+ipcMain.on("get-thumbnail-proxy-format", event => {
+    event.returnValue = store.get(THUMB_PROXY_FORMAT_STORE_KEY, "original")
+})
+ipcMain.handle("set-thumbnail-proxy-format", (_, format: string) => {
+    store.set(THUMB_PROXY_FORMAT_STORE_KEY, format)
+})
+
+const ACCENT_COLOR_STORE_KEY = "accentColor"
+ipcMain.on("get-accent-color", event => {
+    event.returnValue = store.get(ACCENT_COLOR_STORE_KEY, "")
+})
+ipcMain.handle("set-accent-color", (_, color: string) => {
+    store.set(ACCENT_COLOR_STORE_KEY, color)
+})
+
+const APP_FONT_STORE_KEY = "appFont"
+ipcMain.on("get-app-font", event => {
+    event.returnValue = store.get(APP_FONT_STORE_KEY, "")
+})
+ipcMain.handle("set-app-font", (_, font: string) => {
+    store.set(APP_FONT_STORE_KEY, font)
+})
+
+const FADE_SPEED_STORE_KEY = "fadeAnimationSpeed"
+ipcMain.on("get-fade-animation-speed", event => {
+    event.returnValue = store.get(FADE_SPEED_STORE_KEY, 1)
+})
+ipcMain.handle("set-fade-animation-speed", (_, speed: number) => {
+    store.set(FADE_SPEED_STORE_KEY, speed)
+})
