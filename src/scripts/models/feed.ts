@@ -1,5 +1,5 @@
 import { database, itemsTable } from "../db"
-import { and, eq, inArray, desc, sql } from "drizzle-orm"
+import { and, eq, inArray, notInArray, desc, sql, isNotNull } from "drizzle-orm"
 import {
     SourceActionTypes,
     INIT_SOURCES,
@@ -7,6 +7,7 @@ import {
     DELETE_SOURCE,
     UNHIDE_SOURCE,
     HIDE_SOURCE,
+    SourceState,
 } from "./source"
 import {
     ItemActionTypes,
@@ -47,12 +48,17 @@ export class FeedFilter {
         this.search = search
     }
 
-    static testItem(filter: FeedFilter, item: RSSItem) {
+    static testItem(filter: FeedFilter, item: RSSItem, sources?: SourceState) {
         let type = filter.type
         let flag = true
         if (!(type & FilterType.ShowRead)) flag = flag && !item.hasRead
         if (!(type & FilterType.ShowNotStarred)) flag = flag && item.starred
         if (!(type & FilterType.ShowHidden)) flag = flag && !item.hidden
+        if (sources) {
+            const source = sources[item.source]
+            if (source && source.imageOnly)
+                flag = flag && Boolean(item.thumb)
+        }
         if (filter.search !== "") {
             const flags = type & FilterType.CaseInsensitive ? "i" : ""
             const regex = RegExp(filter.search, flags)
@@ -92,11 +98,28 @@ export class RSSFeed {
         this.filter = filter === null ? new FeedFilter() : filter
     }
 
-    static async loadFeed(feed: RSSFeed, skip = 0): Promise<RSSItem[]> {
+    static async loadFeed(
+        feed: RSSFeed,
+        sources?: SourceState,
+        skip = 0
+    ): Promise<RSSItem[]> {
         if (feed.sids.length === 0) return []
         const filter = feed.filter
         const type = filter.type
         const conditions = [inArray(itemsTable.source, feed.sids)]
+        const imageOnlySids = (sources
+            ? feed.sids.filter(
+                  sid => sources[sid] && sources[sid].imageOnly
+              )
+            : [])
+        if (imageOnlySids.length > 0) {
+            conditions.push(
+                sql`(${itemsTable.source} NOT IN (${sql.join(
+                    imageOnlySids.map(s => sql`${s}`),
+                    sql`, `
+                )}) OR ${itemsTable.thumb} IS NOT NULL)`
+            )
+        }
         if (!(type & FilterType.ShowRead))
             conditions.push(eq(itemsTable.hasRead, false))
         if (!(type & FilterType.ShowNotStarred))
@@ -197,7 +220,7 @@ export function dismissItems(): AppThunk {
         let iids = new Set<number>()
         for (let iid of state.feeds[fid].iids) {
             let item = state.items[iid]
-            if (!FeedFilter.testItem(filter, item)) {
+            if (!FeedFilter.testItem(filter, item, state.sources)) {
                 iids.add(iid)
             }
         }
@@ -246,9 +269,10 @@ export function initFeeds(force = false): AppThunk<Promise<void>> {
     return (dispatch, getState) => {
         dispatch(initFeedsRequest())
         let promises = new Array<Promise<void>>()
+        const sources = getState().sources
         for (let feed of Object.values(getState().feeds)) {
             if (!feed.loaded || force) {
-                let p = RSSFeed.loadFeed(feed)
+                let p = RSSFeed.loadFeed(feed, sources)
                     .then(items => {
                         dispatch(initFeedSuccess(feed, items))
                     })
@@ -300,9 +324,9 @@ export function loadMore(feed: RSSFeed): AppThunk<Promise<void>> {
             dispatch(loadMoreRequest(feed))
             const state = getState()
             const skipNum = feed.iids.filter(i =>
-                FeedFilter.testItem(feed.filter, state.items[i])
+                FeedFilter.testItem(feed.filter, state.items[i], state.sources)
             ).length
-            return RSSFeed.loadFeed(feed, skipNum)
+            return RSSFeed.loadFeed(feed, state.sources, skipNum)
                 .then(items => {
                     dispatch(loadMoreSuccess(feed, items))
                 })
