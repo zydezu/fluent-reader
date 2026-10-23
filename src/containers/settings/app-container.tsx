@@ -4,7 +4,8 @@ import {
     saveSettings,
     setupAutoFetch,
 } from "../../scripts/models/app"
-import * as db from "../../scripts/db"
+import { database, itemsTable } from "../../scripts/db"
+import { lt, sql, inArray } from "drizzle-orm"
 import AppTab from "../../components/settings/app"
 import { importAll } from "../../scripts/settings"
 import { updateUnreadCounts } from "../../scripts/models/source"
@@ -23,34 +24,28 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
         dispatch(saveSettings())
         let date = new Date()
         date.setTime(date.getTime() - days * 86400000)
-        await db.itemsDB
-            .delete()
-            .from(db.items)
-            .where(db.items.date.lt(date))
-            .exec()
+        await database.delete(itemsTable).where(lt(itemsTable.date, date))
+        // DELETE leaves reusable pages allocated; explicit cleanup should release them.
+        await database.run(sql`VACUUM`)
         await dispatch(updateUnreadCounts())
         dispatch(saveSettings())
     },
+    importAll: async () => {
+        dispatch(saveSettings())
+        let cancelled = await importAll()
+        if (cancelled) dispatch(saveSettings())
+    },
     removeDuplicates: async (): Promise<number> => {
         dispatch(saveSettings())
-        const allItems = (await db.itemsDB
-            .select(
-                db.items._id,
-                db.items.source,
-                db.items.link,
-                db.items.title,
-                db.items.date
-            )
-            .from(db.items)
-            .exec()) as {
-            _id: number
-            source: number
-            link: string
-            title: string
-            date: Date
-        }[]
-        // Keep the earliest-inserted copy per (source, link) — same identity
-        // used by the fetch-time dedup check — and drop the rest.
+        const allItems = await database
+            .select({
+                _id: itemsTable._id,
+                source: itemsTable.source,
+                link: itemsTable.link,
+                title: itemsTable.title,
+                date: itemsTable.date,
+            })
+            .from(itemsTable)
         allItems.sort((a, b) => a._id - b._id)
         const seen = new Set<string>()
         const duplicateIds: number[] = []
@@ -67,20 +62,13 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
             }
         }
         if (duplicateIds.length > 0) {
-            await db.itemsDB
-                .delete()
-                .from(db.items)
-                .where(db.items._id.in(duplicateIds))
-                .exec()
+            await database
+                .delete(itemsTable)
+                .where(inArray(itemsTable._id, duplicateIds))
             await dispatch(updateUnreadCounts())
         }
         dispatch(saveSettings())
         return duplicateIds.length
-    },
-    importAll: async () => {
-        dispatch(saveSettings())
-        let cancelled = await importAll()
-        if (cancelled) dispatch(saveSettings())
     },
 })
 

@@ -14,7 +14,8 @@ function hashFile(relPath) {
 function updateArticleCsp() {
     let html = fs.readFileSync(htmlPath, "utf8")
 
-    const scriptTag = /<script(?:\s+integrity="[^"]*")?\s+src="([^"]+)"><\/script>/g
+    const scriptTag =
+        /<script(?:\s+integrity="[^"]*")?\s+src="([^"]+)"><\/script>/g
     const hashes = []
     html = html.replace(scriptTag, (_match, src) => {
         const hash = hashFile(src)
@@ -24,8 +25,8 @@ function updateArticleCsp() {
 
     if (hashes.length === 0) {
         throw new Error(
-            "update-article-csp: found no <script src=\"...\"> tags in " +
-            htmlPath
+            'update-article-csp: found no <script src="..."> tags in ' +
+                htmlPath
         )
     }
 
@@ -34,7 +35,7 @@ function updateArticleCsp() {
     if (!cspDirective.test(html)) {
         throw new Error(
             "update-article-csp: could not find a script-src-elem directive to update in " +
-            htmlPath
+                htmlPath
         )
     }
     html = html.replace(cspDirective, `script-src-elem ${cspHashes};`)

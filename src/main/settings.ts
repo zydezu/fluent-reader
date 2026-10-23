@@ -1,4 +1,4 @@
-import Store = require("electron-store")
+import Store from "electron-store"
 import {
     SchemaTypes,
     SourceGroup,
@@ -8,20 +8,66 @@ import {
     SyncService,
     ServiceConfigs,
     ViewConfigs,
-    ThumbnailResizeMode,
-    ProxyImageFormat,
+    RuleTarget,
+    StoredRule,
+    getRuleTargetKey,
 } from "../schema-types"
 import { ipcMain, session, nativeTheme, app } from "electron"
 import { WindowManager } from "./window"
+import { transformLovefieldRules } from "./utils"
 
 export const store = new Store<SchemaTypes>()
 
 const GROUPS_STORE_KEY = "sourceGroups"
+function nextGroupId(): number {
+    const ids = store.get(GROUPS_STORE_KEY, []).map(group => group.gid)
+    for (const key of Object.keys(store.get("sourceRules", {}))) {
+        if (key.startsWith("group:")) ids.push(Number(key.slice(6)))
+    }
+    return Math.max(
+        store.get("nextGroupId", 0),
+        ...ids
+            .filter(id => Number.isSafeInteger(id) && id >= 0)
+            .map(id => id + 1)
+    )
+}
+
+function allocateGroupId(): number {
+    const gid = nextGroupId()
+    store.set("nextGroupId", gid + 1)
+    return gid
+}
+
+ipcMain.on("allocate-group-id", event => {
+    event.returnValue = allocateGroupId()
+})
 ipcMain.handle("set-groups", (_, groups: SourceGroup[]) => {
     store.set(GROUPS_STORE_KEY, groups)
 })
 ipcMain.on("get-groups", event => {
-    event.returnValue = store.get(GROUPS_STORE_KEY, [])
+    const nextId = nextGroupId()
+    if (store.get("nextGroupId", 0) < nextId) store.set("nextGroupId", nextId)
+    const groups = store.get(GROUPS_STORE_KEY, [])
+    const ids = new Set<number>()
+    let changed = false
+    for (const group of groups) {
+        if (
+            !Number.isSafeInteger(group.gid) ||
+            group.gid < 0 ||
+            ids.has(group.gid)
+        ) {
+            group.gid = allocateGroupId()
+            changed = true
+        }
+        // Older renderers persisted the transient display index on some groups.
+        if ("index" in group) {
+            delete group.index
+            changed = true
+        }
+        ids.add(group.gid)
+    }
+    if (changed) store.set(GROUPS_STORE_KEY, groups)
+    event.returnValue = groups
 })
 
 const MENU_STORE_KEY = "menuOn"
@@ -30,71 +76,6 @@ ipcMain.on("get-menu", event => {
 })
 ipcMain.handle("set-menu", (_, state: boolean) => {
     store.set(MENU_STORE_KEY, state)
-})
-
-const ICON_STATUS_KEY = "customIcon"
-function getIconStatus() {
-    return store.get(ICON_STATUS_KEY, true)
-}
-function toggleIconStatus() {
-    store.set(ICON_STATUS_KEY, !getIconStatus())
-}
-
-const THUMBNAIL_RESIZE_MODE_KEY = "thumbnailResizeMode"
-function getThumbnailResizeMode() {
-    return store.get(THUMBNAIL_RESIZE_MODE_KEY, ThumbnailResizeMode.Proxy)
-}
-ipcMain.on("get-thumbnail-resize-mode", event => {
-    event.returnValue = getThumbnailResizeMode()
-})
-ipcMain.handle(
-    "set-thumbnail-resize-mode",
-    (_, mode: ThumbnailResizeMode) => {
-        store.set(THUMBNAIL_RESIZE_MODE_KEY, mode)
-    }
-)
-
-const IMAGE_ERROR_FALLBACK_PROXY_KEY = "imageErrorFallbackProxy"
-ipcMain.on("get-image-error-fallback-proxy", event => {
-    event.returnValue = store.get(IMAGE_ERROR_FALLBACK_PROXY_KEY, true)
-})
-ipcMain.handle("set-image-error-fallback-proxy", (_, flag: boolean) => {
-    store.set(IMAGE_ERROR_FALLBACK_PROXY_KEY, flag)
-})
-
-const CARD_BLUR_BACKGROUND_KEY = "cardBlurBackground"
-ipcMain.on("get-card-blur-background", event => {
-    event.returnValue = store.get(CARD_BLUR_BACKGROUND_KEY, true)
-})
-ipcMain.handle("set-card-blur-background", (_, flag: boolean) => {
-    store.set(CARD_BLUR_BACKGROUND_KEY, flag)
-})
-
-const THUMBNAIL_PROXY_FORMAT_KEY = "thumbnailProxyFormat"
-ipcMain.on("get-thumbnail-proxy-format", event => {
-    event.returnValue = store.get(
-        THUMBNAIL_PROXY_FORMAT_KEY,
-        ProxyImageFormat.WebP
-    )
-})
-ipcMain.handle("set-thumbnail-proxy-format", (_, format: ProxyImageFormat) => {
-    store.set(THUMBNAIL_PROXY_FORMAT_KEY, format)
-})
-
-const FADE_ANIMATION_SPEED_KEY = "fadeAnimationSpeed"
-ipcMain.on("get-fade-animation-speed", event => {
-    event.returnValue = store.get(FADE_ANIMATION_SPEED_KEY, 1)
-})
-ipcMain.handle("set-fade-animation-speed", (_, speed: number) => {
-    store.set(FADE_ANIMATION_SPEED_KEY, speed)
-})
-
-const AUTO_LOAD_MORE_KEY = "autoLoadMore"
-ipcMain.on("get-auto-load-more", event => {
-    event.returnValue = store.get(AUTO_LOAD_MORE_KEY, true)
-})
-ipcMain.handle("set-auto-load-more", (_, flag: boolean) => {
-    store.set(AUTO_LOAD_MORE_KEY, flag)
 })
 
 const PAC_STORE_KEY = "pac"
@@ -121,12 +102,6 @@ function setProxy(address = null) {
         session.fromPartition("sandbox").setProxy(rules)
     }
 }
-ipcMain.on("get-icon-status", (event) => {
-    event.returnValue = getIconStatus()
-})
-ipcMain.on("toggle-icon-status", () => {
-    toggleIconStatus()
-})
 ipcMain.on("get-proxy-status", event => {
     event.returnValue = getProxyStatus()
 })
@@ -158,14 +133,6 @@ ipcMain.handle("set-theme", (_, theme: ThemeSettings) => {
 })
 ipcMain.on("get-theme-dark-color", event => {
     event.returnValue = nativeTheme.shouldUseDarkColors
-})
-
-const ACCENT_COLOR_STORE_KEY = "accentColor"
-ipcMain.on("get-accent-color", event => {
-    event.returnValue = store.get(ACCENT_COLOR_STORE_KEY, "")
-})
-ipcMain.handle("set-accent-color", (_, color: string) => {
-    store.set(ACCENT_COLOR_STORE_KEY, color)
 })
 export function setThemeListener(manager: WindowManager) {
     nativeTheme.removeAllListeners()
@@ -209,22 +176,6 @@ ipcMain.on("get-font", event => {
 })
 ipcMain.handle("set-font", (_, font: string) => {
     store.set(FONT_STORE_KEY, font)
-})
-
-const APP_FONT_STORE_KEY = "appFontFamily"
-ipcMain.on("get-app-font", event => {
-    event.returnValue = store.get(APP_FONT_STORE_KEY, "")
-})
-ipcMain.handle("set-app-font", (_, font: string) => {
-    store.set(APP_FONT_STORE_KEY, font)
-})
-
-ipcMain.on("get-all-settings", event => {
-    let output = {}
-    for (let [key, value] of store) {
-        output[key] = value
-    }
-    event.returnValue = output
 })
 
 const FETCH_INTEVAL_STORE_KEY = "fetchInterval"
@@ -286,10 +237,45 @@ ipcMain.handle(
     }
 )
 
-const NEDB_STATUS_STORE_KEY = "useNeDB"
-ipcMain.on("get-nedb-status", event => {
-    event.returnValue = store.get(NEDB_STATUS_STORE_KEY, true)
+const SOURCE_RULES_STORE_KEY = "sourceRules"
+
+ipcMain.on("get-all-rules", event => {
+    event.returnValue = store.get(SOURCE_RULES_STORE_KEY, {})
 })
-ipcMain.handle("set-nedb-status", (_, flag: boolean) => {
-    store.set(NEDB_STATUS_STORE_KEY, flag)
+ipcMain.handle(
+    "set-rules-for-target",
+    (_, target: RuleTarget, rules: StoredRule[]) => {
+        const key = getRuleTargetKey(target)
+        // Keep the read and write together in main so independent targets cannot
+        // overwrite each other using stale renderer snapshots.
+        const allRules = store.get(SOURCE_RULES_STORE_KEY, {})
+        if (rules.length > 0) allRules[key] = rules
+        else delete allRules[key]
+        store.set(SOURCE_RULES_STORE_KEY, allRules)
+    }
+)
+ipcMain.handle(
+    "migrate-lovefield-rules",
+    (_, sources: Record<string, unknown>[]) => {
+        store.set(SOURCE_RULES_STORE_KEY, transformLovefieldRules(sources))
+    }
+)
+
+const DB_VERSION_STORE_KEY = "dbVersion"
+ipcMain.on("get-db-version", event => {
+    event.returnValue = store.get(
+        DB_VERSION_STORE_KEY as keyof SchemaTypes,
+        null
+    )
+})
+ipcMain.handle("set-db-version", (_, version: string) => {
+    store.set(DB_VERSION_STORE_KEY as keyof SchemaTypes, version)
+})
+
+const UNREAD_SOURCES_ONLY_STORE_KEY = "menuUnreadSourcesOnly"
+ipcMain.on("get-unread-sources-only", event => {
+    event.returnValue = store.get(UNREAD_SOURCES_ONLY_STORE_KEY, false)
+})
+ipcMain.handle("set-unread-sources-only", (_, flag: boolean) => {
+    store.set(UNREAD_SOURCES_ONLY_STORE_KEY, flag)
 })

@@ -17,7 +17,9 @@ const worker = self as unknown as {
 worker.onmessage = async event => {
     const { id, bytes, type, width, height } = event.data
     try {
-        const blob = new Blob([bytes], { type: type || "application/octet-stream" })
+        const blob = new Blob([bytes as unknown as BlobPart], {
+            type: type || "application/octet-stream",
+        })
         const bitmap = await createImageBitmap(blob)
 
         // Mimic CSS object-fit: cover - scale to cover the target box, then

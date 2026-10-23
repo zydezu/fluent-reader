@@ -1,0 +1,1 @@
+ALTER TABLE `sources` ADD `imageOnly` integer DEFAULT false NOT NULL;

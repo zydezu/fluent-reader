@@ -1,205 +1,543 @@
 import * as React from "react"
+import { useMemo, useCallback, useEffect, useRef, useState } from "react"
 import intl from "react-intl-universal"
-import { Icon } from "@fluentui/react/lib/Icon"
-import { Nav, INavLink, INavLinkGroup } from "office-ui-fabric-react/lib/Nav"
-import { SourceGroup } from "../schema-types"
-import { SourceState, RSSSource } from "../scripts/models/source"
-import { ALL } from "../scripts/models/feed"
-import { AnimationClassNames, Stack, FocusZone } from "@fluentui/react"
-import { proxifyIcon } from "./utils/proxied-image"
+import { SourceGroup, ViewType } from "../schema-types"
+import { RSSSource } from "../scripts/models/source"
+import { ALL, initFeeds } from "../scripts/models/feed"
+import { useAppSelector, useAppDispatch } from "../scripts/reducer"
+import { toggleMenu, openGroupMenu } from "../scripts/models/app"
+import { toggleGroupExpansion } from "../scripts/models/group"
+import {
+    selectAllArticles,
+    selectSources,
+    toggleSearch,
+} from "../scripts/models/page"
+import {
+    makeStyles,
+    mergeClasses,
+    ToggleButton,
+    tokens,
+    Tree,
+    TreeItem,
+    TreeItemLayout,
+    TreeOpenChangeData,
+    useSubtreeContext_unstable,
+} from "@fluentui/react-components"
+import { useFocusFinders } from "@fluentui/react-tabster"
+import {
+    Checkmark16Regular,
+    DocumentOnePageMultiple16Regular,
+    Filter12Filled,
+    Search16Regular,
+} from "@fluentui/react-icons"
+import { FlatButton } from "./utils/FlatButton"
+import { FlatButtonGroup } from "./utils/FlatButtonGroup"
+import { useIsWideScreen } from "./utils/hooks/useIsWideScreen"
+import { useIsBlurred } from "./utils/hooks/useIsBlurred"
+import { Icon } from "@fluentui/react"
+import { StackShim } from "@fluentui/react-migration-v8-v9"
 
-export type MenuProps = {
-    status: boolean
-    display: boolean
-    selected: string
-    sources: SourceState
-    groups: SourceGroup[]
-    searchOn: boolean
-    itemOn: boolean
-    toggleMenu: () => void
-    allArticles: (init?: boolean) => void
-    selectSourceGroup: (group: SourceGroup, menuKey: string) => void
-    selectSource: (source: RSSSource) => void
-    groupContextMenu: (sids: number[], event: React.MouseEvent) => void
-    updateGroupExpansion: (
-        event: React.MouseEvent<HTMLElement>,
-        key: string,
-        selected: string
-    ) => void
-    toggleSearch: () => void
-}
-
-export class Menu extends React.Component<MenuProps> {
-    countOverflow = (count: number) => (count >= 1000 ? " 999+" : ` ${count}`)
-
-    getLinkGroups = (): INavLinkGroup[] => [
-        {
-            links: [
-                {
-                    name: intl.get("search"),
-                    ariaLabel:
-                        intl.get("search") + (this.props.searchOn ? " ✓" : " "),
-                    key: "search",
-                    icon: "Search",
-                    onClick: this.props.toggleSearch,
-                    url: null,
-                },
-                {
-                    name: intl.get("allArticles"),
-                    ariaLabel:
-                        intl.get("allArticles") +
-                        this.countOverflow(
-                            Object.values(this.props.sources)
-                                .filter(s => !s.hidden)
-                                .map(s => s.unreadCount)
-                                .reduce((a, b) => a + b, 0)
-                        ),
-                    key: ALL,
-                    icon: "TextDocument",
-                    onClick: () =>
-                        this.props.allArticles(this.props.selected !== ALL),
-                    url: null,
-                },
-            ],
+const useMenuClasses = makeStyles({
+    menuBtn: {
+        height: "var(--navHeight)",
+        lineHeight: "var(--navHeight)",
+    },
+    menuBtnBlurred: {
+        color: "var(--neutralSecondaryAlt)",
+    },
+    menuGroupDarwin: {
+        display: "flex",
+        flexDirection: "row-reverse",
+    },
+    menuContainer: {
+        "position": "fixed",
+        "zIndex": 5,
+        "left": 0,
+        "top": 0,
+        "width": "100%",
+        "height": "100%",
+        "pointerEvents": "none",
+        "@media (min-width: 1440px)": {
+            width: "280px !important",
+            background: "none",
+            backdropFilter: "none",
         },
-        {
-            name: intl.get("menu.subscriptions") + (` (${this.props.groups.length})`),
-            links: this.props.groups
-                .filter(g => g.sids.length > 0)
-                .map(g => {
-                    if (g.isMultiple) {
-                        let sources = g.sids.map(sid => this.props.sources[sid])
-                        return {
-                            name: g.name,
-                            ariaLabel:
-                                g.name +
-                                this.countOverflow(
-                                    sources
-                                        .map(s => s.unreadCount)
-                                        .reduce((a, b) => a + b, 0)
-                                ),
-                            key: "g-" + g.index,
-                            url: null,
-                            isExpanded: g.expanded,
-                            onClick: () =>
-                                this.props.selectSourceGroup(g, "g-" + g.index),
-                            links: sources.map(this.getSource),
-                        }
-                    } else {
-                        return this.getSource(this.props.sources[g.sids[0]])
-                    }
-                }),
+    },
+    menuContainerShow: {
+        pointerEvents: "unset",
+    },
+    menuInner: {
+        "position": "absolute",
+        "left": 0,
+        "top": 0,
+        "width": "280px",
+        "height": "100%",
+        "backgroundColor": "var(--neutralLighterAltOpacity)",
+        "backdropFilter": "var(--blur)",
+        "boxShadow": "5px 0 25px #0004",
+        "transition":
+            "clip-path var(--transition-timing) 0.367s, opacity cubic-bezier(0, 0, 0.2, 1) 0.367s",
+        "clipPath": "inset(0 100% 0 0)",
+        "opacity": 0,
+        "@media (min-width: 1440px)": {
+            "backgroundColor": "var(--neutralLight)",
+            "boxShadow": "none",
+            "::after": {
+                content: '""',
+                display: "block",
+                pointerEvents: "none",
+                position: "absolute",
+                top: "-10%",
+                right: 0,
+                width: "120%",
+                height: "120%",
+                boxShadow: "inset 5px 0 25px #0004",
+            },
         },
-    ]
-
-    getSource = (s: RSSSource): INavLink => ({
-        name: s.name,
-        ariaLabel: s.name + this.countOverflow(s.unreadCount),
-        key: "s-" + s.sid,
-        onClick: () => this.props.selectSource(s),
-        iconProps: s.iconurl ? this.getIconStyle(s.iconurl) : null,
-        url: null,
-    })
-
-    getIconStyle = (url: string) => ({
-        style: { width: 16 },
-        imageProps: {
-            style: { width: "100%" },
-            src: proxifyIcon(url),
+    },
+    menuInnerShow: {
+        "clipPath": "inset(0 -50px 0 0)",
+        "opacity": 1,
+        "@media (min-width: 1440px)": {
+            clipPath: "inset(0)",
         },
-    })
+    },
+    menuInnerDarwin: {
+        "@media (min-width: 1440px)": {
+            background: "none",
+        },
+    },
+    menuInnerItemOnDarwin: {
+        "@media (min-width: 1440px)": {
+            backgroundColor: "var(--neutralLight)",
+        },
+    },
+    navWrapper: {
+        maxHeight: "calc(100% - var(--navHeight))",
+        overflowX: "hidden",
+        overflowY: "auto",
+    },
+    tree: {
+        paddingTop: 0,
+        paddingBottom: 0,
+    },
+    subsHeaderStack: {
+        marginTop: "16px",
+        marginBottom: "4px",
+        marginLeft: "8px",
+        marginRight: "8px",
+    },
+    subsHeader: {
+        fontSize: "12px",
+        color: tokens.colorNeutralForeground4,
+        userSelect: "none",
+    },
+    favicon: {
+        width: "16px",
+        height: "16px",
+        verticalAlign: "middle",
+        userSelect: "none",
+    },
+    primaryIcon: {
+        color: tokens.colorCompoundBrandForeground1,
+    },
+})
 
-    onContext = (item: INavLink, event: React.MouseEvent) => {
-        let sids: number[]
-        let [type, index] = item.key.split("-")
-        if (type === "s") {
-            sids = [parseInt(index)]
-        } else if (type === "g") {
-            sids = this.props.groups[parseInt(index)].sids
-        } else {
-            return
+export const Menu: React.FC = () => {
+    const dispatch = useAppDispatch()
+    const menuClasses = useMenuClasses()
+    const { findFirstFocusable } = useFocusFinders()
+    const isWideScreen = useIsWideScreen()
+    const isDarwin = globalThis.utils.platform === "darwin"
+    const isBlurred = useIsBlurred()
+
+    const status = useAppSelector(
+        s => s.app.sourceInit && !s.app.settings.display
+    )
+    const display = useAppSelector(s => s.app.menu)
+    const selected = useAppSelector(s => s.app.menuKey)
+    const sources = useAppSelector(s => s.sources)
+    const groups = useAppSelector(s => s.groups)
+    const searchOn = useAppSelector(s => s.page.searchOn)
+    const itemOn = useAppSelector(
+        s => s.page.itemId !== null && s.page.viewType !== ViewType.List
+    )
+
+    const openItems = useMemo(
+        () =>
+            new Set(
+                groups
+                    .filter(g => g.isMultiple && g.expanded)
+                    .map(g => "g-" + g.gid)
+            ),
+        [groups]
+    )
+
+    const handleToggleMenu = useCallback(() => dispatch(toggleMenu()), [])
+    const handleToggleSearch = useCallback(() => dispatch(toggleSearch()), [])
+    const handleAllArticles = useCallback((init = false) => {
+        dispatch(selectAllArticles(init))
+        dispatch(initFeeds())
+    }, [])
+    const handleSelectSourceGroup = useCallback(
+        (group: SourceGroup, menuKey: string) => {
+            dispatch(selectSources(group.sids, menuKey, group.name))
+            dispatch(initFeeds())
+        },
+        []
+    )
+    const handleSelectSource = useCallback((source: RSSSource) => {
+        dispatch(selectSources([source.sid], "s-" + source.sid, source.name))
+        dispatch(initFeeds())
+    }, [])
+    const handleGroupContextMenu = useCallback(
+        (sids: number[], event: React.MouseEvent) => {
+            dispatch(openGroupMenu(sids, event))
+        },
+        []
+    )
+
+    const handleOpenChange = useCallback(
+        (_event: any, data: TreeOpenChangeData) => {
+            if (
+                data.type === "ExpandIconClick" ||
+                data.type === "ArrowRight" ||
+                data.type === "ArrowLeft"
+            ) {
+                const value = String(data.value)
+                if (value.startsWith("g-")) {
+                    const gid = Number.parseInt(value.slice(2))
+                    dispatch(toggleGroupExpansion(gid))
+                }
+            }
+        },
+        []
+    )
+
+    const [isUnreadSourcesOnly, setIsUnreadSourcesOnly] = useState(() =>
+        globalThis.settings.getUnreadSourcesOnly()
+    )
+
+    const totalUnread = useMemo(
+        () =>
+            Object.values(sources)
+                .filter(s => !s.hidden)
+                .map(s => s.unreadCount)
+                .reduce((a, b) => a + b, 0),
+        [sources]
+    )
+
+    const treeRef = useRef<HTMLDivElement>(null)
+    const previousDisplayRef = useRef(display)
+    useEffect(() => {
+        if (display && !previousDisplayRef.current) {
+            findFirstFocusable(treeRef.current)?.focus()
         }
-        this.props.groupContextMenu(sids, event)
+        previousDisplayRef.current = display
+    }, [display])
+
+    const renderSourceItem = (s: RSSSource) => {
+        const key = "s-" + s.sid
+        return (
+            <MenuTreeItem
+                key={key}
+                value={key}
+                label={s.name}
+                isSelected={selected === key}
+                icon={
+                    s.iconurl ? (
+                        <img
+                            alt=""
+                            className={menuClasses.favicon}
+                            src={s.iconurl}
+                        />
+                    ) : undefined
+                }
+                unreadCount={s.unreadCount}
+                onClick={() => handleSelectSource(s)}
+                onContextMenu={e => {
+                    handleGroupContextMenu([s.sid], e)
+                }}
+            />
+        )
     }
 
-    _onRenderLink = (link: INavLink): JSX.Element => {
-        let count = link.ariaLabel.split(" ").pop()
-        return (
-            <Stack
-                className="link-stack"
-                horizontal
-                grow
-                onContextMenu={event => this.onContext(link, event)}>
-                <div className="link-text">{link.name}</div>
-                {count && count !== "0" && (
-                    <div className="unread-count">{count}</div>
+    return (
+        status && (
+            <div
+                className={mergeClasses(
+                    menuClasses.menuContainer,
+                    display && menuClasses.menuContainerShow
                 )}
-            </Stack>
-        )
-    }
-
-    _onRenderGroupHeader = (group: INavLinkGroup): JSX.Element => {
-        return (
-            <p className={"subs-header " + AnimationClassNames.slideDownIn10}>
-                {group.name}
-            </p>
-        )
-    }
-
-    render() {
-        return (
-            this.props.status && (
+                onClick={handleToggleMenu}>
                 <div
-                    className={
-                        "menu-container" + (this.props.display ? " show" : "")
-                    }
-                    onClick={this.props.toggleMenu}>
-                    <div
-                        className={
-                            "menu" + (this.props.itemOn ? " item-on" : "")
-                        }
-                        onClick={e => e.stopPropagation()}>
-                        <div className="btn-group">
-                            <a
-                                className="btn hide-wide"
-                                title={intl.get("menu.close")}
-                                onClick={this.props.toggleMenu}>
-                                <Icon iconName="Back" />
-                            </a>
-                            <a
-                                className="btn inline-block-wide"
-                                title={intl.get("menu.close")}
-                                onClick={this.props.toggleMenu}>
+                    className={mergeClasses(
+                        menuClasses.menuInner,
+                        display && menuClasses.menuInnerShow,
+                        isDarwin && menuClasses.menuInnerDarwin,
+                        isDarwin && itemOn && menuClasses.menuInnerItemOnDarwin
+                    )}
+                    onClick={e => e.stopPropagation()}>
+                    <FlatButtonGroup
+                        styleClass={
+                            isDarwin ? menuClasses.menuGroupDarwin : undefined
+                        }>
+                        <FlatButton
+                            styleClass={mergeClasses(
+                                menuClasses.menuBtn,
+                                isBlurred
+                                    ? menuClasses.menuBtnBlurred
+                                    : undefined
+                            )}
+                            title={intl.get("menu.close")}
+                            ariaLabel={intl.get("menu.close")}
+                            onClick={handleToggleMenu}>
+                            {isWideScreen ? (
                                 <Icon
                                     iconName={
-                                        window.utils.platform === "darwin"
+                                        isDarwin
                                             ? "SidePanel"
                                             : "GlobalNavButton"
                                     }
                                 />
-                            </a>
-                        </div>
-                        <FocusZone
-                            as="div"
-                            disabled={!this.props.display}
-                            className="nav-wrapper">
-                            <Nav
-                                onRenderGroupHeader={this._onRenderGroupHeader}
-                                onRenderLink={this._onRenderLink}
-                                groups={this.getLinkGroups()}
-                                selectedKey={this.props.selected}
-                                onLinkExpandClick={(event, item) =>
-                                    this.props.updateGroupExpansion(
-                                        event,
-                                        item.key,
-                                        this.props.selected
-                                    )
+                            ) : (
+                                <Icon iconName="Back" />
+                            )}
+                        </FlatButton>
+                    </FlatButtonGroup>
+                    <div className={menuClasses.navWrapper}>
+                        <Tree
+                            ref={treeRef}
+                            className={menuClasses.tree}
+                            size="small"
+                            appearance="subtle-alpha"
+                            openItems={openItems}
+                            onOpenChange={handleOpenChange}>
+                            <MenuTreeItem
+                                value="search"
+                                label={intl.get("search")}
+                                icon={
+                                    <Search16Regular
+                                        className={menuClasses.primaryIcon}
+                                    />
+                                }
+                                aside={
+                                    searchOn ? (
+                                        <Checkmark16Regular
+                                            className={menuClasses.primaryIcon}
+                                        />
+                                    ) : undefined
+                                }
+                                onClick={handleToggleSearch}
+                            />
+                            <MenuTreeItem
+                                value={ALL}
+                                label={intl.get("allArticles")}
+                                isSelected={selected === ALL}
+                                icon={
+                                    <DocumentOnePageMultiple16Regular
+                                        className={menuClasses.primaryIcon}
+                                    />
+                                }
+                                unreadCount={totalUnread}
+                                onClick={() =>
+                                    handleAllArticles(selected !== ALL)
                                 }
                             />
-                        </FocusZone>
+                            {groups.length > 0 && (
+                                <StackShim
+                                    horizontal
+                                    horizontalAlign="space-between"
+                                    verticalAlign="center"
+                                    className={menuClasses.subsHeaderStack}>
+                                    <span className={menuClasses.subsHeader}>
+                                        {intl.get("menu.subscriptions")}
+                                    </span>
+                                    <ToggleButton
+                                        aria-label={
+                                            isUnreadSourcesOnly
+                                                ? intl.get("context.unreadOnly")
+                                                : intl.get("allArticles")
+                                        }
+                                        checked={isUnreadSourcesOnly}
+                                        onClick={() => {
+                                            setIsUnreadSourcesOnly(value => {
+                                                globalThis.settings.setUnreadSourcesOnly(
+                                                    !value
+                                                )
+                                                return !value
+                                            })
+                                        }}
+                                        size="small"
+                                        appearance="transparent"
+                                        icon={<Filter12Filled />}>
+                                        {isUnreadSourcesOnly &&
+                                            intl.get("context.unreadOnly")}
+                                    </ToggleButton>
+                                </StackShim>
+                            )}
+                            {groups
+                                .filter(g => {
+                                    if (g.sids.length === 0) return false
+                                    if (!isUnreadSourcesOnly) return true
+                                    return g.sids.some(
+                                        sid => sources[sid]?.unreadCount > 0
+                                    )
+                                })
+                                .map(g => {
+                                    if (g.isMultiple) {
+                                        const groupSources = g.sids.map(
+                                            sid => sources[sid]
+                                        )
+                                        const groupKey = "g-" + g.gid
+                                        const isGroupSelected =
+                                            selected === groupKey
+                                        const groupUnread = groupSources
+                                            .map(s => s.unreadCount)
+                                            .reduce((a, b) => a + b, 0)
+                                        const visibleGroupSources =
+                                            isUnreadSourcesOnly
+                                                ? groupSources.filter(
+                                                      s => s.unreadCount > 0
+                                                  )
+                                                : groupSources
+                                        return (
+                                            <MenuTreeItem
+                                                key={groupKey}
+                                                value={groupKey}
+                                                itemType="branch"
+                                                label={g.name}
+                                                isSelected={isGroupSelected}
+                                                unreadCount={groupUnread}
+                                                onClick={() =>
+                                                    handleSelectSourceGroup(
+                                                        g,
+                                                        groupKey
+                                                    )
+                                                }
+                                                onContextMenu={e =>
+                                                    handleGroupContextMenu(
+                                                        g.sids,
+                                                        e
+                                                    )
+                                                }>
+                                                <Tree>
+                                                    {visibleGroupSources.map(
+                                                        renderSourceItem
+                                                    )}
+                                                </Tree>
+                                            </MenuTreeItem>
+                                        )
+                                    } else {
+                                        return renderSourceItem(
+                                            sources[g.sids[0]]
+                                        )
+                                    }
+                                })}
+                        </Tree>
                     </div>
                 </div>
-            )
+            </div>
+        )
+    )
+}
+
+const useTreeItemClasses = makeStyles({
+    treeItem: {
+        minHeight: "32px",
+    },
+    treeLeafItem: {
+        paddingLeft: "12px",
+    },
+    treeLeafSubItem: {
+        paddingLeft: "24px",
+    },
+    selectedItem: {
+        "::after": {
+            content: '""',
+            position: "absolute",
+            left: 0,
+            top: "4px",
+            width: "4px",
+            height: "24px",
+            borderRadius: tokens.borderRadiusCircular,
+            backgroundColor: tokens.colorCompoundBrandForeground1,
+        },
+    },
+    selectedItemText: {
+        color: tokens.colorNeutralForeground1,
+        fontWeight: tokens.fontWeightSemibold,
+    },
+    unreadCount: {
+        color: tokens.colorNeutralForeground3,
+        marginLeft: "auto",
+        paddingLeft: "4px",
+        flexShrink: 0,
+    },
+})
+
+interface MenuTreeItemProps {
+    value: string
+    itemType?: "leaf" | "branch"
+    label: string
+    isSelected?: boolean
+    icon?: React.ReactElement
+    unreadCount?: number
+    aside?: React.ReactElement
+    onClick: () => void
+    onContextMenu?: (e: React.MouseEvent) => void
+    children?: React.ReactNode
+}
+
+const MenuTreeItem: React.FC<MenuTreeItemProps> = ({
+    value,
+    itemType = "leaf",
+    label,
+    isSelected = false,
+    icon,
+    unreadCount,
+    aside,
+    onClick,
+    onContextMenu,
+    children,
+}) => {
+    const c = useTreeItemClasses()
+    const { level } = useSubtreeContext_unstable()
+    let resolvedAside: React.ReactElement | undefined = aside
+    if (resolvedAside === undefined && unreadCount && unreadCount > 0) {
+        resolvedAside = (
+            <span className={c.unreadCount}>
+                {unreadCount >= 1000 ? "999+" : String(unreadCount)}
+            </span>
         )
     }
+    const handleContextMenu = onContextMenu
+        ? (e: React.MouseEvent) => {
+              e.stopPropagation()
+              onContextMenu(e)
+          }
+        : undefined
+    return (
+        <TreeItem
+            value={value}
+            itemType={itemType}
+            onClick={onClick}
+            onContextMenu={handleContextMenu}>
+            <TreeItemLayout
+                aria-label={`${isSelected ? "Selected: " : ""}${label}`}
+                className={mergeClasses(
+                    c.treeItem,
+                    itemType === "leaf" && c.treeLeafItem,
+                    level > 1 && c.treeLeafSubItem,
+                    isSelected && c.selectedItem
+                )}
+                iconBefore={icon}
+                aside={resolvedAside}>
+                <span className={isSelected ? c.selectedItemText : undefined}>
+                    {label}
+                </span>
+            </TreeItemLayout>
+            {children}
+        </TreeItem>
+    )
 }

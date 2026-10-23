@@ -16,39 +16,39 @@ import CompactCard from "../cards/compact-card"
 import { Card } from "../cards/card"
 import { isAutoLoadMoreEnabled } from "../../scripts/settings"
 
-class ListFeed extends React.Component<FeedProps> {
-    onRenderItem = (item: RSSItem) => {
-        const props = {
-            feedId: this.props.feed._id,
+const ListFeed: React.FC<FeedProps> = props => {
+    const onRenderItem = (item: RSSItem) => {
+        const cardProps = {
+            feedId: props.feed._id,
             key: item._id,
             item: item,
-            source: this.props.sourceMap[item.source],
-            filter: this.props.filter,
-            viewConfigs: this.props.viewConfigs,
-            shortcuts: this.props.shortcuts,
-            markRead: this.props.markRead,
-            contextMenu: this.props.contextMenu,
-            showItem: this.props.showItem,
+            source: props.sourceMap[item.source],
+            filter: props.filter,
+            viewConfigs: props.viewConfigs,
+            shortcuts: props.shortcuts,
+            markRead: props.markRead,
+            contextMenu: props.contextMenu,
+            showItem: props.showItem,
         } as Card.Props
         if (
-            this.props.viewType === ViewType.List &&
-            this.props.currentItem === item._id
+            props.viewType === ViewType.List &&
+            props.currentItem === item._id
         ) {
-            props.selected = true
+            cardProps.selected = true
         }
 
-        switch (this.props.viewType) {
+        switch (props.viewType) {
             case ViewType.Magazine:
-                return <MagazineCard {...props} />
+                return <MagazineCard {...cardProps} />
             case ViewType.Compact:
-                return <CompactCard {...props} />
+                return <CompactCard {...cardProps} />
             default:
-                return <ListCard {...props} />
+                return <ListCard {...cardProps} />
         }
     }
 
-    getClassName = () => {
-        switch (this.props.viewType) {
+    const getClassName = () => {
+        switch (props.viewType) {
             case ViewType.Magazine:
                 return "magazine-feed"
             case ViewType.Compact:
@@ -58,22 +58,11 @@ class ListFeed extends React.Component<FeedProps> {
         }
     }
 
-    canFocusChild = (el: HTMLElement) => {
-        if (el.id === "load-more") {
-            const container = document.getElementById("refocus")
-            const result =
-                container.scrollTop >
-                container.scrollHeight - 2 * container.offsetHeight
-            if (!result) container.scrollTop += 100
-            return result
-        } else {
-            return true
-        }
-    }
+    const canFocusChild = () => true
 
-    handleScroll = (event: React.UIEvent<HTMLElement>) => {
+    const handleScroll = (event: React.UIEvent<HTMLElement>) => {
         if (!isAutoLoadMoreEnabled()) return
-        const { feed, loadMore } = this.props
+        const { feed, loadMore } = props
         if (!feed.loaded || feed.loading || feed.allLoaded) return
         const el = event.currentTarget
         if (el.scrollTop + el.offsetHeight > el.scrollHeight - 400) {
@@ -81,43 +70,29 @@ class ListFeed extends React.Component<FeedProps> {
         }
     }
 
-    render() {
-        return (
-            this.props.feed.loaded && (
-                <FocusZone
-                    as="div"
-                    id="refocus"
-                    direction={FocusZoneDirection.vertical}
-                    className={this.getClassName()}
-                    shouldReceiveFocus={this.canFocusChild}
-                    onScroll={this.handleScroll}
-                    data-is-scrollable>
-                    <List
-                        className={AnimationClassNames.slideUpIn10}
-                        items={this.props.items}
-                        onRenderCell={this.onRenderItem}
-                        ignoreScrollingState
-                        usePageCache
-                    />
-                    {this.props.feed.loaded && !this.props.feed.allLoaded ? (
-                        <div className="load-more-wrapper">
-                            <PrimaryButton
-                                id="load-more"
-                                text={intl.get("loadMore")}
-                                disabled={this.props.feed.loading}
-                                onClick={() =>
-                                    this.props.loadMore(this.props.feed)
-                                }
-                            />
-                        </div>
-                    ) : null}
-                    {this.props.items.length === 0 && (
-                        <div className="empty">{intl.get("article.empty")}</div>
-                    )}
-                </FocusZone>
-            )
+    return (
+        props.feed.loaded && (
+            <FocusZone
+                as="div"
+                id="refocus"
+                direction={FocusZoneDirection.vertical}
+                className={getClassName()}
+                shouldReceiveFocus={canFocusChild}
+                onScroll={handleScroll}
+                data-is-scrollable>
+                <List
+                    className={AnimationClassNames.slideUpIn10}
+                    items={props.items}
+                    onRenderCell={onRenderItem}
+                    ignoreScrollingState
+                    usePageCache
+                />
+                {props.items.length === 0 && (
+                    <div className="empty">{intl.get("article.empty")}</div>
+                )}
+            </FocusZone>
         )
-    }
+    )
 }
 
 export default ListFeed

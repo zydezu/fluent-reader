@@ -1,6 +1,7 @@
 node_modules
 dist/**/*.js
 dist/**/*.js.map
+dist/griffel.css
 bin/*
 .DS_Store
 *.provisionprofile
@@ -10,3 +11,6 @@ bin/*
 *.md
 *.json
 !src/**/*.json
+
+# Optional private suite owns its formatting configuration.
+tests/e2e

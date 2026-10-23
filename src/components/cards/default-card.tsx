@@ -10,7 +10,7 @@ import { DEFAULT_CARD_BG_SIZE, DEFAULT_CARD_HEAD_SIZE } from "./thumbnail-sizes"
 // render doesn't need a sync IPC round trip. Unlike that cache, mounted
 // cards subscribe to changes so toggling the setting updates them
 // immediately instead of only affecting cards rendered after a restart.
-let blurBackground: boolean = window.settings.getCardBlurBackground()
+let blurBackground: boolean = true
 const blurBackgroundListeners = new Set<() => void>()
 export const setBlurBackground = (enabled: boolean) => {
     blurBackground = enabled
@@ -62,7 +62,11 @@ const DefaultCard: React.FunctionComponent<Card.Props> = props => {
             ) : null}
             <CardInfo source={props.source} item={props.item} />
             <h3 className="title">
-                <Highlights text={props.item.title} filter={props.filter} title />
+                <Highlights
+                    text={props.item.title}
+                    filter={props.filter}
+                    title
+                />
             </h3>
             <p className={"snippet" + (props.item.thumb ? "" : " show")}>
                 <Highlights text={props.item.snippet} filter={props.filter} />

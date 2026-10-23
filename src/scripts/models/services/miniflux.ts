@@ -1,13 +1,13 @@
 import intl from "react-intl-universal"
-import * as db from "../../db"
-import lf from "lovefield"
+import { database, itemsTable } from "../../db"
+import { and, eq, inArray, isNotNull, lte, gte } from "drizzle-orm"
 import { ServiceHooks } from "../service"
 import { ServiceConfigs, SyncService } from "../../../schema-types"
 import { createSourceGroup } from "../group"
 import { RSSSource } from "../source"
 import { domParser, htmlDecode } from "../../utils"
 import { RSSItem } from "../item"
-import { SourceRule } from "../rule"
+import { ArticleRule, getRulesForTarget } from "../rule"
 
 // miniflux service configs
 export interface MinifluxConfigs extends ServiceConfigs {
@@ -60,7 +60,9 @@ async function fetchAPI(
 ): Promise<Response> {
     try {
         const headers = new Headers()
-        headers.append("content-type", "application/x-www-form-urlencoded")
+        if (body !== null) {
+            headers.append("content-type", "application/json")
+        }
 
         configs.apiKeyAuth
             ? headers.append("X-Auth-Token", configs.authKey)
@@ -130,7 +132,7 @@ export const minifluxServiceHooks: ServiceHooks = {
     // NOTE: miniflux endpoint /entries default order with "published at", and does not offer "created_at"
     //          but does offer id sort, directly correlated with "created". some feeds give strange published_at.
 
-    fetchItems: () => async (_, getState) => {
+    fetchItems: () => async (dispatch, getState) => {
         const state = getState()
         const configs = state.service as MinifluxConfigs
         const items: Entry[] = new Array()
@@ -163,7 +165,7 @@ export const minifluxServiceHooks: ServiceHooks = {
             }
         } while (
             entriesResponse.entries &&
-            entriesResponse.total >= quantity &&
+            entriesResponse.entries.length >= quantity &&
             items.length < configs.fetchLimit
         )
 
@@ -179,7 +181,7 @@ export const minifluxServiceHooks: ServiceHooks = {
             }
         }
 
-        // map item objects to rssitem type while appling rules (if exist)
+        // Parse new articles; rule writebacks are best effort and never awaited.
         const parsedItems = items.map(item => {
             const source = sourceMap.get(item.feed.id.toString())
 
@@ -210,13 +212,25 @@ export const minifluxServiceHooks: ServiceHooks = {
             let img = dom.querySelector("img")
             if (img && img.src) parsedItem.thumb = img.src
 
-            if (source.rules) {
-                SourceRule.applyAll(source.rules, parsedItem)
-                if ((item.status === "read") !== parsedItem.hasRead)
-                    minifluxServiceHooks.markRead(parsedItem)
-                if (item.starred !== parsedItem.starred)
-                    minifluxServiceHooks.markUnread(parsedItem)
-            }
+            ArticleRule.applyAll(
+                getRulesForTarget(state.rules, state.groups, {
+                    type: "source",
+                    sid: source.sid,
+                }),
+                parsedItem
+            )
+            if ((item.status === "read") !== parsedItem.hasRead)
+                void dispatch(
+                    parsedItem.hasRead
+                        ? minifluxServiceHooks.markRead(parsedItem)
+                        : minifluxServiceHooks.markUnread(parsedItem)
+                ).catch(() => {})
+            if (item.starred !== parsedItem.starred)
+                void dispatch(
+                    parsedItem.starred
+                        ? minifluxServiceHooks.star(parsedItem)
+                        : minifluxServiceHooks.unstar(parsedItem)
+                ).catch(() => {})
 
             return parsedItem
         })
@@ -228,32 +242,39 @@ export const minifluxServiceHooks: ServiceHooks = {
     syncItems: () => async (_, getState) => {
         const configs = getState().service as MinifluxConfigs
 
-        const unreadPromise: Promise<Entries> = fetchAPI(
-            configs,
-            "entries?status=unread"
-        ).then(response => response.json())
-        const starredPromise: Promise<Entries> = fetchAPI(
-            configs,
-            "entries?starred=true"
-        ).then(response => response.json())
-        const [unread, starred] = await Promise.all([
-            unreadPromise,
-            starredPromise,
+        const fetchEntryIds = async (params: string): Promise<Set<string>> => {
+            const ids = new Set<string>()
+            const limit = 1000
+            let offset = 0
+            let response: Entries
+            do {
+                response = await fetchAPI(
+                    configs,
+                    `entries?${params}&limit=${limit}&offset=${offset}`
+                ).then(r => r.json())
+                for (const entry of response.entries) {
+                    ids.add(String(entry.id))
+                }
+                offset += limit
+            } while (response.entries.length >= limit)
+            return ids
+        }
+
+        const [unreadIds, starredIds] = await Promise.all([
+            fetchEntryIds("status=unread"),
+            fetchEntryIds("starred=true"),
         ])
 
-        return [
-            new Set(unread.entries.map((entry: Entry) => String(entry.id))),
-            new Set(starred.entries.map((entry: Entry) => String(entry.id))),
-        ]
+        return [unreadIds, starredIds]
     },
 
     markRead: (item: RSSItem) => async (_, getState) => {
         if (!item.serviceRef) return
 
-        const body = `{
-            "entry_ids": [${item.serviceRef}],
-            "status": "read"
-        }`
+        const body = JSON.stringify({
+            entry_ids: [Number(item.serviceRef)],
+            status: "read",
+        })
 
         const response = await fetchAPI(
             getState().service as MinifluxConfigs,
@@ -268,10 +289,10 @@ export const minifluxServiceHooks: ServiceHooks = {
     markUnread: (item: RSSItem) => async (_, getState) => {
         if (!item.serviceRef) return
 
-        const body = `{
-            "entry_ids": [${item.serviceRef}],
-            "status": "unread"
-        }`
+        const body = JSON.stringify({
+            entry_ids: [Number(item.serviceRef)],
+            status: "unread",
+        })
         await fetchAPI(
             getState().service as MinifluxConfigs,
             "entries",
@@ -294,23 +315,24 @@ export const minifluxServiceHooks: ServiceHooks = {
         const configs = state.service as MinifluxConfigs
 
         if (date) {
-            const predicates: lf.Predicate[] = [
-                db.items.source.in(sids),
-                db.items.hasRead.eq(false),
-                db.items.serviceRef.isNotNull(),
-                before ? db.items.date.lte(date) : db.items.date.gte(date),
+            const conditions = [
+                inArray(itemsTable.source, sids),
+                eq(itemsTable.hasRead, false),
+                isNotNull(itemsTable.serviceRef),
+                before
+                    ? lte(itemsTable.date, date)
+                    : gte(itemsTable.date, date),
             ]
-            const query = lf.op.and.apply(null, predicates)
-            const rows = await db.itemsDB
-                .select(db.items.serviceRef)
-                .from(db.items)
-                .where(query)
-                .exec()
-            const refs = rows.map(row => row["serviceRef"])
-            const body = `{
-                "entry_ids": [${refs}],
-                "status": "read"
-            }`
+            const rows = await database
+                .select({ serviceRef: itemsTable.serviceRef })
+                .from(itemsTable)
+                .where(and(...conditions))
+            const refs = rows.map(row => Number(row.serviceRef))
+            if (refs.length === 0) return
+            const body = JSON.stringify({
+                entry_ids: refs,
+                status: "read",
+            })
             await fetchAPI(configs, "entries", "PUT", body)
         } else {
             const sources = state.sources
