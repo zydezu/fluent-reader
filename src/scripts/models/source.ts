@@ -334,6 +334,7 @@ export function insertSource(source: RSSSource): AppThunk<Promise<RSSSource>> {
                         fetchFrequency: source.fetchFrequency || 0,
                         textDir: source.textDir || 0,
                         hidden: source.hidden || false,
+                        imageOnly: source.imageOnly || false,
                     })
                     resolve(source)
                 } catch (err) {
@@ -426,6 +427,7 @@ export function updateSource(source: RSSSource): AppThunk<Promise<void>> {
             fetchFrequency: source.fetchFrequency || 0,
             textDir: source.textDir || 0,
             hidden: source.hidden || false,
+            imageOnly: source.imageOnly || false,
         }
         await database
             .insert(sourcesTable)

@@ -11,6 +11,9 @@ export const sourcesTable = sqliteTable("sources", {
     fetchFrequency: integer("fetchFrequency").notNull().default(0),
     textDir: integer("textDir").notNull().default(0),
     hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
+    imageOnly: integer("imageOnly", { mode: "boolean" })
+        .notNull()
+        .default(false),
 })
 
 export const itemsTable = sqliteTable("items", {
