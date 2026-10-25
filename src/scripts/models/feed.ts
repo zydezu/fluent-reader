@@ -101,8 +101,13 @@ export class FeedFilter {
             const source = sources[item.source]
             if (source && source.imageOnly) flag = flag && Boolean(item.thumb)
             if (source && source.hideRetweets) {
-                const t = (item.snippet || item.title || "").trim()
-                flag = flag && !t.startsWith("RT ")
+                const isRT = (v: string) => /^RT\s/.test((v || "").trim())
+                flag =
+                    flag &&
+                    !(
+                        isRT(item.title as string) ||
+                        isRT(item.snippet as string)
+                    )
             }
         }
         if (filter.search !== "") {
@@ -145,7 +150,7 @@ function sourceQueryGroups(
         const [io, hr] = key.split("-").map(Number)
         const conds: SQL[] = [inArray(itemsTable.source, groupSids)]
         if (io) conds.push(isNotNull(itemsTable.thumb))
-        if (hr) conds.push(sql`${itemsTable.snippet} NOT LIKE 'RT %'`)
+        if (hr) conds.push(sql`${itemsTable.title} NOT LIKE 'RT %'`)
         groups.push(conds)
     }
     return groups

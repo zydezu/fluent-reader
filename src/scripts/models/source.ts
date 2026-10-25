@@ -232,7 +232,7 @@ async function unreadCount(sources: SourceState): Promise<SourceState> {
         if (io) conds.push(isNotNull(itemsTable.thumb))
         if (hr)
             conds.push(
-                sql`${itemsTable.snippet} NOT LIKE 'RT %'`
+                sql`${itemsTable.title} NOT LIKE 'RT %'`
             )
         queries.push(
             database
