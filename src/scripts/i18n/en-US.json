@@ -153,7 +153,7 @@
         "selectedMulti": "Selected multiple sources",
         "hidden": "Hide in \"all articles\"",
         "imageOnly": "Only show articles with images",
-        "hideRetweets": "Hide retweets (RT …)",
+        "hideRetweets": "Don't show retweets",
         "group": "Group",
         "ungrouped": "Ungrouped",
         "manageGroup": "Manage",
