@@ -1,5 +1,6 @@
-import * as db from "../db"
-import lf from "lovefield"
+import { database, itemsTable } from "../db"
+import { and, desc, eq, inArray, isNotNull, or, sql } from "drizzle-orm"
+import type { SQL } from "drizzle-orm"
 import {
     SourceActionTypes,
     INIT_SOURCES,
@@ -48,30 +49,46 @@ export class FeedFilter {
         this.search = search
     }
 
-    static toPredicates(filter: FeedFilter) {
+    static toConditions(filter: FeedFilter) {
         let type = filter.type
-        const predicates = new Array<lf.Predicate>()
+        const conditions = new Array<SQL>()
         if (!(type & FilterType.ShowRead))
-            predicates.push(db.items.hasRead.eq(false))
+            conditions.push(eq(itemsTable.hasRead, false))
         if (!(type & FilterType.ShowNotStarred))
-            predicates.push(db.items.starred.eq(true))
+            conditions.push(eq(itemsTable.starred, true))
         if (!(type & FilterType.ShowHidden))
-            predicates.push(db.items.hidden.eq(false))
+            conditions.push(eq(itemsTable.hidden, false))
         if (filter.search !== "") {
-            const flags = type & FilterType.CaseInsensitive ? "i" : ""
-            const regex = RegExp(filter.search, flags)
+            const pattern = filter.search
             if (type & FilterType.FullSearch) {
-                predicates.push(
-                    lf.op.or(
-                        db.items.title.match(regex),
-                        db.items.snippet.match(regex)
+                if (type & FilterType.CaseInsensitive) {
+                    conditions.push(
+                        sql`(regexpi(${pattern}, ${itemsTable.title}) OR regexpi(${pattern}, ${itemsTable.snippet}))`
                     )
-                )
+                } else {
+                    conditions.push(
+                        sql`(regexp(${pattern}, ${itemsTable.title}) OR regexp(${pattern}, ${itemsTable.snippet}))`
+                    )
+                }
+            } else if (type & FilterType.CreatorSearch) {
+                if (type & FilterType.CaseInsensitive) {
+                    conditions.push(
+                        sql`regexpi(${pattern}, ${itemsTable.creator})`
+                    )
+                } else {
+                    conditions.push(sql`regexp(${pattern}, ${itemsTable.creator})`)
+                }
             } else {
-                predicates.push(db.items.title.match(regex))
+                if (type & FilterType.CaseInsensitive) {
+                    conditions.push(
+                        sql`regexpi(${pattern}, ${itemsTable.title})`
+                    )
+                } else {
+                    conditions.push(sql`regexp(${pattern}, ${itemsTable.title})`)
+                }
             }
         }
-        return predicates
+        return conditions
     }
 
     static testItem(filter: FeedFilter, item: RSSItem, sources?: SourceState) {
@@ -105,27 +122,26 @@ export const SOURCE = "SOURCE"
 
 const LOAD_QUANTITY = 50
 
-// Lovefield silently drops the orderBy for skip()/limit() queries whose
-// predicate contains a top-level OR, which returns an arbitrary (and
-// mis-ordered) page of rows. So instead of building one OR predicate spanning
-// every source, loadFeed runs one plain `source IN (...)` query per predicate
-// shape and merges the (correctly ordered) results in JS.
+// Queries are built per predicate shape: image-only sources require a thumb,
+// normal sources don't, so the two groups get different WHERE clauses. The
+// results are merged in JS in date order.
 function sourceQueryGroups(
     sids: number[],
     sources: SourceState
-): lf.Predicate[][] {
+): SQL[][] {
     const normalSids = sids.filter(
         sid => !(sources[sid] && sources[sid].imageOnly)
     )
     const imageOnlySids = sids.filter(
         sid => sources[sid] && sources[sid].imageOnly
     )
-    const groups: lf.Predicate[][] = []
-    if (normalSids.length > 0) groups.push([db.items.source.in(normalSids)])
+    const groups: SQL[][] = []
+    if (normalSids.length > 0)
+        groups.push([inArray(itemsTable.source, normalSids)])
     if (imageOnlySids.length > 0)
         groups.push([
-            db.items.source.in(imageOnlySids),
-            db.items.thumb.isNotNull(),
+            inArray(itemsTable.source, imageOnlySids),
+            isNotNull(itemsTable.thumb),
         ])
     return groups
 }
@@ -153,31 +169,25 @@ export class RSSFeed {
         sources: SourceState,
         skip = 0
     ): Promise<RSSItem[]> {
+        if (feed.sids.length === 0) return []
         const groups = sourceQueryGroups(feed.sids, sources)
         if (groups.length === 0) return []
-        // Rebuild the filter predicates per query: Lovefield mutates predicate
-        // nodes when composing a query, so they can't be shared between queries.
-        const whereFor = (sourcePredicates: lf.Predicate[]) => {
-            const predicates = [
-                ...FeedFilter.toPredicates(feed.filter),
-                ...sourcePredicates,
-            ]
-            return predicates.length === 1
-                ? predicates[0]
-                : lf.op.and.apply(null, predicates)
-        }
 
-        // Fast path: a single `source IN (...)` query paginates correctly, so
-        // push skip/limit straight into the query and only materialise one page.
+        // Fast path: a single query paginates correctly, so push skip/limit
+        // straight into the query and only materialise one page.
         if (groups.length === 1) {
-            return db.itemsDB
+            return (await database
                 .select()
-                .from(db.items)
-                .where(whereFor(groups[0]))
-                .orderBy(db.items.date, lf.Order.DESC)
-                .skip(skip)
-                .limit(LOAD_QUANTITY)
-                .exec() as Promise<RSSItem[]>
+                .from(itemsTable)
+                .where(
+                    and(
+                        ...FeedFilter.toConditions(feed.filter),
+                        ...groups[0]
+                    )
+                )
+                .orderBy(desc(itemsTable.date))
+                .offset(skip)
+                .limit(LOAD_QUANTITY)) as unknown as RSSItem[]
         }
 
         // Multiple predicate shapes (some sources are image-only): the global
@@ -185,19 +195,28 @@ export class RSSFeed {
         // and merge. Only hit when a feed mixes image-only and normal sources.
         const head = skip + LOAD_QUANTITY
         const results = await Promise.all(
-            groups.map(
-                sourcePredicates =>
-                    db.itemsDB
-                        .select()
-                        .from(db.items)
-                        .where(whereFor(sourcePredicates))
-                        .orderBy(db.items.date, lf.Order.DESC)
-                        .limit(head)
-                        .exec() as Promise<RSSItem[]>
+            groups.map(sourceConditions =>
+                database
+                    .select()
+                    .from(itemsTable)
+                    .where(
+                        and(
+                            ...FeedFilter.toConditions(feed.filter),
+                            ...sourceConditions
+                        )
+                    )
+                    .orderBy(desc(itemsTable.date))
+                    .limit(head)
             )
         )
-        const merged = results.reduce((a, b) =>
-            mergeSortedArrays(a, b, (x, y) => y.date.getTime() - x.date.getTime())
+        const merged = results.reduce(
+            (a, b) =>
+                mergeSortedArrays(
+                    a as RSSItem[],
+                    b as RSSItem[],
+                    (x, y) => y.date.getTime() - x.date.getTime()
+                ),
+            [] as RSSItem[]
         )
         return merged.slice(skip, head)
     }

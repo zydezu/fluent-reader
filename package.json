@@ -1,6 +1,6 @@
 {
     "name": "fluent-reader",
-    "version": "1.8.0",
+    "version": "1.9.0",
     "description": "Modern desktop RSS reader",
     "main": "./dist/electron.js",
     "scripts": {
@@ -8,6 +8,8 @@
         "electron": "electron ./dist/electron.js",
         "start": "npm run build && npm run electron",
         "format": "prettier --write .",
+        "drizzle:generate": "drizzle-kit generate",
+        "postinstall": "electron-builder install-app-deps",
         "package-win": "electron-builder -w appx:x64 && electron-builder -w appx:ia32 && electron-builder -w appx:arm64",
         "package-win-ci": "electron-builder -w --x64 -p never && electron-builder -w --ia32 -p never",
         "package-mac": "electron-builder --mac --x64",
@@ -25,7 +27,9 @@
         "@types/react": "^16.9.35",
         "@types/react-dom": "^16.9.8",
         "@types/react-redux": "^7.1.9",
-        "electron": "^44.1.1",
+        "drizzle-kit": "^0.31.7",
+        "drizzle-orm": "^0.45.2",
+        "electron": "^44.9.3",
         "electron-builder": "^26.15.3",
         "electron-react-devtools": "^0.5.3",
         "electron-store": "^5.2.0",
@@ -54,10 +58,15 @@
     "dependencies": {
         "@ghostery/adblocker-electron": "^2.20.1",
         "@ghostery/adblocker-electron-preload": "^2.20.1",
+        "better-sqlite3": "^12.10.0",
         "node-polyfill-webpack-plugin": "^2.0.1"
     },
     "allowScripts": {
         "electron-winstaller@5.4.0": true,
-        "react-intl-universal@2.12.0": true
+        "react-intl-universal@2.12.0": true,
+        "better-sqlite3@12.11.1": true,
+        "esbuild@0.25.12": true,
+        "esbuild@0.28.2": true,
+        "esbuild@0.18.20": true
     }
 }

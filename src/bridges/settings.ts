@@ -7,6 +7,7 @@ import {
     ViewConfigs,
     ThumbnailResizeMode,
     ProxyImageFormat,
+    StoredRule,
 } from "../schema-types"
 import { ipcRenderer } from "electron"
 
@@ -189,12 +190,18 @@ const settingsBridge = {
         ipcRenderer.invoke("set-nedb-status", flag)
     },
 
-    getAll: () => {
-        return ipcRenderer.sendSync("get-all-settings") as Object
+    getSourceRules: (): StoredRule[] => {
+        return ipcRenderer.sendSync("get-source-rules")
+    },
+    setSourceRules: (rules: StoredRule[]): Promise<void> => {
+        return ipcRenderer.invoke("set-source-rules", rules)
     },
 
-    setAll: configs => {
-        ipcRenderer.invoke("import-all-settings", configs)
+    getDBVersion: (): string | null => {
+        return ipcRenderer.sendSync("get-db-version")
+    },
+    setDBVersion: (version: string): Promise<void> => {
+        return ipcRenderer.invoke("set-db-version", version)
     },
 }
 

@@ -11,6 +11,7 @@ module.exports = [
             "@ghostery/adblocker": "commonjs @ghostery/adblocker",
             "@ghostery/adblocker-electron-preload":
                 "commonjs @ghostery/adblocker-electron-preload",
+            "better-sqlite3": "commonjs better-sqlite3",
         },
         module: {
             rules: [

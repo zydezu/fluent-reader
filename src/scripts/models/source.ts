@@ -1,6 +1,6 @@
 import intl from "react-intl-universal"
-import * as db from "../db"
-import lf from "lovefield"
+import { eq, and, inArray, isNotNull, count, max } from "drizzle-orm"
+import { database, sourcesTable, itemsTable, init } from "../db"
 import {
     fetchFavicon,
     fetchYTChannelIcon,
@@ -82,20 +82,19 @@ export class RSSSource {
         // some feeds (e.g. MacRumors) bump pubDate when an article is
         // edited, which previously caused the same article to be
         // reinserted as a "new" item.
-        const predicate = i.link
-            ? lf.op.and(db.items.source.eq(i.source), db.items.link.eq(i.link))
-            : lf.op.and(
-                  db.items.source.eq(i.source),
-                  db.items.title.eq(i.title),
-                  db.items.date.eq(i.date)
-              )
-        const items = (await db.itemsDB
-            .select()
-            .from(db.items)
-            .where(predicate)
+        const conditions = i.link
+            ? [eq(itemsTable.source, i.source), eq(itemsTable.link, i.link)]
+            : [
+                  eq(itemsTable.source, i.source),
+                  eq(itemsTable.title, i.title),
+                  eq(itemsTable.date, i.date),
+              ]
+        const existing = await database
+            .select({ _id: itemsTable._id })
+            .from(itemsTable)
+            .where(and(...conditions))
             .limit(1)
-            .exec()) as RSSItem[]
-        if (items.length === 0) {
+        if (existing.length === 0) {
             RSSItem.parseContent(i, item)
             if (source.rules) SourceRule.applyAll(source.rules, i)
             return i
@@ -212,42 +211,50 @@ async function unreadCount(sources: SourceState): Promise<SourceState> {
     const allSids = Object.keys(sources).map(Number)
     const imageOnlySids = allSids.filter(sid => sources[sid].imageOnly)
     const normalSids = allSids.filter(sid => !sources[sid].imageOnly)
-    const queries: Promise<{ [key: string]: any }[]>[] = []
+    const queries: Promise<
+        { source: number; count: number }[]
+    >[] = []
     if (normalSids.length > 0) {
         queries.push(
-            db.itemsDB
-                .select(db.items.source, lf.fn.count(db.items._id))
-                .from(db.items)
+            database
+                .select({
+                    source: itemsTable.source,
+                    count: count(itemsTable._id),
+                })
+                .from(itemsTable)
                 .where(
-                    lf.op.and(
-                        db.items.hasRead.eq(false),
-                        db.items.source.in(normalSids)
+                    and(
+                        eq(itemsTable.hasRead, false),
+                        inArray(itemsTable.source, normalSids)
                     )
                 )
-                .groupBy(db.items.source)
-                .exec() as Promise<{ [key: string]: any }[]>
+                .groupBy(itemsTable.source)
         )
     }
     if (imageOnlySids.length > 0) {
         queries.push(
-            db.itemsDB
-                .select(db.items.source, lf.fn.count(db.items._id))
-                .from(db.items)
+            database
+                .select({
+                    source: itemsTable.source,
+                    count: count(itemsTable._id),
+                })
+                .from(itemsTable)
                 .where(
-                    lf.op.and(
-                        db.items.hasRead.eq(false),
-                        db.items.source.in(imageOnlySids),
-                        db.items.thumb.isNotNull()
+                    and(
+                        eq(itemsTable.hasRead, false),
+                        inArray(itemsTable.source, imageOnlySids),
+                        isNotNull(itemsTable.thumb)
                     )
                 )
-                .groupBy(db.items.source)
-                .exec() as Promise<{ [key: string]: any }[]>
+                .groupBy(itemsTable.source)
         )
     }
     const results = await Promise.all(queries)
     for (const rows of results) {
         for (let row of rows) {
-            sources[row["source"]].unreadCount = row["COUNT(_id)"]
+            if (sources[row.source]) {
+                sources[row.source].unreadCount = row.count
+            }
         }
     }
     return sources
@@ -272,15 +279,20 @@ export function updateUnreadCounts(): AppThunk<Promise<void>> {
 export function initSources(): AppThunk<Promise<void>> {
     return async dispatch => {
         dispatch(initSourcesRequest())
-        await db.init()
-        const sources = (await db.sourcesDB
-            .select()
-            .from(db.sources)
-            .exec()) as RSSSource[]
+        await init()
+        const sourcesData = await database.select().from(sourcesTable)
+        const storedRules = globalThis.settings.getSourceRules()
         const state: SourceState = {}
-        for (let source of sources) {
-            source.unreadCount = 0
-            state[source.sid] = source
+        for (const source of sourcesData) {
+            const rssSource = source as unknown as RSSSource
+            rssSource.unreadCount = 0
+            const sourceRules = storedRules.filter(
+                r => r.target.type === "source" && r.target.sid === source.sid
+            )
+            if (sourceRules.length > 0) {
+                rssSource.rules = sourceRules.map(r => SourceRule.fromStored(r))
+            }
+            state[source.sid] = rssSource
         }
         await unreadCount(state)
         dispatch(fixBrokenGroups(state))
@@ -319,22 +331,46 @@ export function addSourceFailure(err, batch: boolean): SourceActionTypes {
 
 let insertPromises = Promise.resolve()
 export function insertSource(source: RSSSource): AppThunk<Promise<RSSSource>> {
-    return (_, getState) => {
+    return () => {
         return new Promise((resolve, reject) => {
             insertPromises = insertPromises.then(async () => {
-                let sids = Object.values(getState().sources).map(s => s.sid)
-                source.sid = Math.max(...sids, -1) + 1
-                const row = db.sources.createRow(source)
                 try {
-                    const inserted = (await db.sourcesDB
-                        .insert()
-                        .into(db.sources)
-                        .values([row])
-                        .exec()) as RSSSource[]
-                    resolve(inserted[0])
+                    const result = await database
+                        .select({ maxSid: max(sourcesTable.sid) })
+                        .from(sourcesTable)
+                    source.sid = (result[0]?.maxSid ?? -1) + 1
+                    await database.insert(sourcesTable).values({
+                        sid: source.sid,
+                        url: source.url,
+                        iconurl: source.iconurl || null,
+                        name: source.name,
+                        openTarget: source.openTarget,
+                        lastFetched: source.lastFetched,
+                        serviceRef: source.serviceRef || null,
+                        fetchFrequency: source.fetchFrequency || 0,
+                        textDir: source.textDir || 0,
+                        hidden: source.hidden || false,
+                        imageOnly: source.imageOnly || false,
+                    })
+                    resolve(source)
                 } catch (err) {
-                    if (err.code === 201) reject(intl.get("sources.exist"))
-                    else reject(err)
+                    // Drizzle wraps the original IPC rejection in its cause.
+                    let cause = err
+                    while (
+                        cause instanceof Error &&
+                        cause.cause instanceof Error
+                    )
+                        cause = cause.cause
+                    if (
+                        cause instanceof Error &&
+                        cause.message.includes(
+                            "UNIQUE constraint failed: sources.url"
+                        )
+                    ) {
+                        reject(intl.get("sources.exist"))
+                    } else {
+                        reject(err)
+                    }
                 }
             })
         })
@@ -386,14 +422,26 @@ export function updateSourceDone(source: RSSSource): SourceActionTypes {
 
 export function updateSource(source: RSSSource): AppThunk<Promise<void>> {
     return async dispatch => {
-        let sourceCopy = { ...source }
-        delete sourceCopy.unreadCount
-        const row = db.sources.createRow(sourceCopy)
-        await db.sourcesDB
-            .insertOrReplace()
-            .into(db.sources)
-            .values([row])
-            .exec()
+        const dbValues = {
+            sid: source.sid,
+            url: source.url,
+            iconurl: source.iconurl || null,
+            name: source.name,
+            openTarget: source.openTarget,
+            lastFetched: source.lastFetched,
+            serviceRef: source.serviceRef || null,
+            fetchFrequency: source.fetchFrequency || 0,
+            textDir: source.textDir || 0,
+            hidden: source.hidden || false,
+            imageOnly: source.imageOnly || false,
+        }
+        await database
+            .insert(sourcesTable)
+            .values(dbValues)
+            .onConflictDoUpdate({
+                target: sourcesTable.sid,
+                set: dbValues,
+            })
         dispatch(updateSourceDone(source))
     }
 }
@@ -412,16 +460,12 @@ export function deleteSource(
     return async (dispatch, getState) => {
         if (!batch) dispatch(saveSettings())
         try {
-            await db.itemsDB
-                .delete()
-                .from(db.items)
-                .where(db.items.source.eq(source.sid))
-                .exec()
-            await db.sourcesDB
-                .delete()
-                .from(db.sources)
-                .where(db.sources.sid.eq(source.sid))
-                .exec()
+            await database
+                .delete(itemsTable)
+                .where(eq(itemsTable.source, source.sid))
+            await database
+                .delete(sourcesTable)
+                .where(eq(sourcesTable.sid, source.sid))
             dispatch(deleteSourceDone(source))
             window.settings.saveGroups(getState().groups)
         } catch (err) {

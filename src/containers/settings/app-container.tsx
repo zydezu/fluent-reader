@@ -4,7 +4,8 @@ import {
     saveSettings,
     setupAutoFetch,
 } from "../../scripts/models/app"
-import * as db from "../../scripts/db"
+import { database, itemsTable } from "../../scripts/db"
+import { eq, inArray, lt } from "drizzle-orm"
 import AppTab from "../../components/settings/app"
 import { importAll } from "../../scripts/settings"
 import { updateUnreadCounts } from "../../scripts/models/source"
@@ -23,26 +24,21 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
         dispatch(saveSettings())
         let date = new Date()
         date.setTime(date.getTime() - days * 86400000)
-        await db.itemsDB
-            .delete()
-            .from(db.items)
-            .where(db.items.date.lt(date))
-            .exec()
+        await database.delete(itemsTable).where(lt(itemsTable.date, date))
         await dispatch(updateUnreadCounts())
         dispatch(saveSettings())
     },
     removeDuplicates: async (): Promise<number> => {
         dispatch(saveSettings())
-        const allItems = (await db.itemsDB
-            .select(
-                db.items._id,
-                db.items.source,
-                db.items.link,
-                db.items.title,
-                db.items.date
-            )
-            .from(db.items)
-            .exec()) as {
+        const allItems = (await database
+            .select({
+                _id: itemsTable._id,
+                source: itemsTable.source,
+                link: itemsTable.link,
+                title: itemsTable.title,
+                date: itemsTable.date,
+            })
+            .from(itemsTable)) as {
             _id: number
             source: number
             link: string
@@ -67,11 +63,9 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
             }
         }
         if (duplicateIds.length > 0) {
-            await db.itemsDB
-                .delete()
-                .from(db.items)
-                .where(db.items._id.in(duplicateIds))
-                .exec()
+            await database
+                .delete(itemsTable)
+                .where(inArray(itemsTable._id, duplicateIds))
             await dispatch(updateUnreadCounts())
         }
         dispatch(saveSettings())

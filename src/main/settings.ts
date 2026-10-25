@@ -293,3 +293,22 @@ ipcMain.on("get-nedb-status", event => {
 ipcMain.handle("set-nedb-status", (_, flag: boolean) => {
     store.set(NEDB_STATUS_STORE_KEY, flag)
 })
+
+const SOURCE_RULES_STORE_KEY = "sourceRules"
+ipcMain.on("get-source-rules", event => {
+    event.returnValue = store.get(SOURCE_RULES_STORE_KEY as keyof SchemaTypes, [])
+})
+ipcMain.handle("set-source-rules", (_, rules) => {
+    store.set(SOURCE_RULES_STORE_KEY as keyof SchemaTypes, rules)
+})
+
+const DB_VERSION_STORE_KEY = "dbVersion"
+ipcMain.on("get-db-version", event => {
+    event.returnValue = store.get(
+        DB_VERSION_STORE_KEY as keyof SchemaTypes,
+        null
+    )
+})
+ipcMain.handle("set-db-version", (_, version: string) => {
+    store.set(DB_VERSION_STORE_KEY as keyof SchemaTypes, version)
+})

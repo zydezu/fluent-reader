@@ -92,6 +92,20 @@ export interface TouchBarTexts {
     notifications: string
 }
 
+export type RuleTarget =
+    | { type: "source"; sid: number }
+    | { type: "group"; gid: number }
+    | { type: "all" }
+
+export interface StoredRule {
+    id: string
+    target: RuleTarget
+    filter: number
+    search: string
+    match: boolean
+    actions: string[]
+}
+
 export type SchemaTypes = {
     version: string
     theme: ThemeSettings
@@ -118,4 +132,6 @@ export type SchemaTypes = {
     cardBlurBackground: boolean
     thumbnailProxyFormat: ProxyImageFormat
     fadeAnimationSpeed: number
+    sourceRules: StoredRule[]
+    dbVersion: string
 }
