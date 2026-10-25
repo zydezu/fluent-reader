@@ -107,6 +107,7 @@ async function handleImportAll(): Promise<boolean> {
         textDir: (s.textDir as number) || 0,
         hidden: Boolean(s.hidden),
         imageOnly: Boolean(s.imageOnly),
+        hideRetweets: Boolean(s.hideRetweets),
     })
 
     const mapItem = (i: Record<string, unknown>): InsertItem => ({
