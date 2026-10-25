@@ -1,5 +1,5 @@
 import intl from "react-intl-universal"
-import { eq, and, inArray, isNotNull, count, max } from "drizzle-orm"
+import { eq, and, inArray, isNotNull, count, max, sql } from "drizzle-orm"
 import { database, sourcesTable, itemsTable, init } from "../db"
 import {
     fetchFavicon,
@@ -51,6 +51,7 @@ export class RSSSource {
     textDir: SourceTextDirection
     hidden: boolean
     imageOnly: boolean
+    hideRetweets: boolean
 
     constructor(url: string, name: string = null) {
         this.url = url
@@ -61,6 +62,7 @@ export class RSSSource {
         this.textDir = SourceTextDirection.LTR
         this.hidden = false
         this.imageOnly = false
+        this.hideRetweets = false
     }
 
     static async fetchMetaData(source: RSSSource) {
@@ -209,12 +211,29 @@ export function initSourcesFailure(err): SourceActionTypes {
 
 async function unreadCount(sources: SourceState): Promise<SourceState> {
     const allSids = Object.keys(sources).map(Number)
-    const imageOnlySids = allSids.filter(sid => sources[sid].imageOnly)
-    const normalSids = allSids.filter(sid => !sources[sid].imageOnly)
+    // Group sources by their (imageOnly, hideRetweets) predicate shape so each
+    // distinct combination gets one correctly-filtered COUNT query.
+    const combos = new Map<string, number[]>()
+    for (const sid of allSids) {
+        const s = sources[sid]
+        const key = `${s.imageOnly ? 1 : 0}-${s.hideRetweets ? 1 : 0}`
+        if (!combos.has(key)) combos.set(key, [])
+        combos.get(key)!.push(sid)
+    }
     const queries: Promise<
         { source: number; count: number }[]
     >[] = []
-    if (normalSids.length > 0) {
+    for (const [key, sids] of combos) {
+        const [io, hr] = key.split("-").map(Number)
+        const conds: any[] = [
+            eq(itemsTable.hasRead, false),
+            inArray(itemsTable.source, sids),
+        ]
+        if (io) conds.push(isNotNull(itemsTable.thumb))
+        if (hr)
+            conds.push(
+                sql`${itemsTable.snippet} NOT LIKE 'RT %'`
+            )
         queries.push(
             database
                 .select({
@@ -222,30 +241,7 @@ async function unreadCount(sources: SourceState): Promise<SourceState> {
                     count: count(itemsTable._id),
                 })
                 .from(itemsTable)
-                .where(
-                    and(
-                        eq(itemsTable.hasRead, false),
-                        inArray(itemsTable.source, normalSids)
-                    )
-                )
-                .groupBy(itemsTable.source)
-        )
-    }
-    if (imageOnlySids.length > 0) {
-        queries.push(
-            database
-                .select({
-                    source: itemsTable.source,
-                    count: count(itemsTable._id),
-                })
-                .from(itemsTable)
-                .where(
-                    and(
-                        eq(itemsTable.hasRead, false),
-                        inArray(itemsTable.source, imageOnlySids),
-                        isNotNull(itemsTable.thumb)
-                    )
-                )
+                .where(and(...conds))
                 .groupBy(itemsTable.source)
         )
     }
@@ -351,6 +347,7 @@ export function insertSource(source: RSSSource): AppThunk<Promise<RSSSource>> {
                         textDir: source.textDir || 0,
                         hidden: source.hidden || false,
                         imageOnly: source.imageOnly || false,
+                        hideRetweets: source.hideRetweets || false,
                     })
                     resolve(source)
                 } catch (err) {
@@ -434,6 +431,7 @@ export function updateSource(source: RSSSource): AppThunk<Promise<void>> {
             textDir: source.textDir || 0,
             hidden: source.hidden || false,
             imageOnly: source.imageOnly || false,
+            hideRetweets: source.hideRetweets || false,
         }
         await database
             .insert(sourcesTable)

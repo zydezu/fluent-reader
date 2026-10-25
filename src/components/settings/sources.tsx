@@ -57,6 +57,7 @@ type SourcesTabProps = {
     exportOPML: () => void
     toggleSourceHidden: (source: RSSSource) => void
     toggleSourceImageOnly: (source: RSSSource) => void
+    toggleSourceHideRetweets: (source: RSSSource) => void
     onManageGroup: (groupIndex: number) => void
 }
 
@@ -375,6 +376,16 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
         })
     }
 
+    onToggleHideRetweets = () => {
+        this.props.toggleSourceHideRetweets(this.state.selectedSource)
+        this.setState({
+            selectedSource: {
+                ...this.state.selectedSource,
+                hideRetweets: !this.state.selectedSource.hideRetweets,
+            } as RSSSource,
+        })
+    }
+
     render = () => (
         <div className="tab-body">
             {this.props.serviceOn && (
@@ -675,6 +686,17 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                             <Toggle
                                 checked={this.state.selectedSource.imageOnly}
                                 onChange={this.onToggleImageOnly}
+                            />
+                        </Stack.Item>
+                    </Stack>
+                    <Stack horizontal verticalAlign="baseline">
+                        <Stack.Item grow>
+                            <Label>{intl.get("sources.hideRetweets")}</Label>
+                        </Stack.Item>
+                        <Stack.Item>
+                            <Toggle
+                                checked={this.state.selectedSource.hideRetweets}
+                                onChange={this.onToggleHideRetweets}
                             />
                         </Stack.Item>
                     </Stack>

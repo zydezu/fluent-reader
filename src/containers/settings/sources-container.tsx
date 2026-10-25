@@ -97,6 +97,14 @@ const mapDispatchToProps = (dispatch: AppDispatch) => {
         deleteSources: (sources: RSSSource[]) =>
             dispatch(deleteSources(sources)),
         importOPML: () => dispatch(importOPML()),
+        toggleSourceHideRetweets: (source: RSSSource) => {
+            dispatch(
+                updateSource({
+                    ...source,
+                    hideRetweets: !source.hideRetweets,
+                } as RSSSource)
+            )
+        },
         exportOPML: () => dispatch(exportOPML()),
         toggleSourceHidden: (source: RSSSource) =>
             dispatch(toggleSourceHidden(source)),

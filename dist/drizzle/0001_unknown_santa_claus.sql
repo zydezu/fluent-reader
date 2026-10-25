@@ -1,0 +1,1 @@
+ALTER TABLE `sources` ADD `hideRetweets` integer DEFAULT false NOT NULL;

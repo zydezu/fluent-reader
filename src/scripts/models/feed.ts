@@ -100,6 +100,10 @@ export class FeedFilter {
         if (sources) {
             const source = sources[item.source]
             if (source && source.imageOnly) flag = flag && Boolean(item.thumb)
+            if (source && source.hideRetweets) {
+                const t = (item.snippet || item.title || "").trim()
+                flag = flag && !t.startsWith("RT ")
+            }
         }
         if (filter.search !== "") {
             const flags = type & FilterType.CaseInsensitive ? "i" : ""
@@ -123,26 +127,27 @@ export const SOURCE = "SOURCE"
 const LOAD_QUANTITY = 50
 
 // Queries are built per predicate shape: image-only sources require a thumb,
-// normal sources don't, so the two groups get different WHERE clauses. The
-// results are merged in JS in date order.
+// retweet-hiding sources exclude items whose snippet starts with "RT ", and
+// normal sources get no extra predicate. The results are merged in JS.
 function sourceQueryGroups(
     sids: number[],
     sources: SourceState
 ): SQL[][] {
-    const normalSids = sids.filter(
-        sid => !(sources[sid] && sources[sid].imageOnly)
-    )
-    const imageOnlySids = sids.filter(
-        sid => sources[sid] && sources[sid].imageOnly
-    )
+    const combos = new Map<string, number[]>()
+    for (const sid of sids) {
+        const s = sources[sid]
+        const key = `${s && s.imageOnly ? 1 : 0}-${s && s.hideRetweets ? 1 : 0}`
+        if (!combos.has(key)) combos.set(key, [])
+        combos.get(key)!.push(sid)
+    }
     const groups: SQL[][] = []
-    if (normalSids.length > 0)
-        groups.push([inArray(itemsTable.source, normalSids)])
-    if (imageOnlySids.length > 0)
-        groups.push([
-            inArray(itemsTable.source, imageOnlySids),
-            isNotNull(itemsTable.thumb),
-        ])
+    for (const [key, groupSids] of combos) {
+        const [io, hr] = key.split("-").map(Number)
+        const conds: SQL[] = [inArray(itemsTable.source, groupSids)]
+        if (io) conds.push(isNotNull(itemsTable.thumb))
+        if (hr) conds.push(sql`${itemsTable.snippet} NOT LIKE 'RT %'`)
+        groups.push(conds)
+    }
     return groups
 }
 

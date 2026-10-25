@@ -33,6 +33,7 @@ sdbSchema
     .addColumn("textDir", lf.Type.NUMBER)
     .addColumn("hidden", lf.Type.BOOLEAN)
     .addColumn("imageOnly", lf.Type.BOOLEAN)
+    .addColumn("hideRetweets", lf.Type.BOOLEAN)
     .addNullable(["iconurl", "serviceRef", "rules"])
     .addIndex("idxURL", ["url"], true)
 
@@ -74,6 +75,7 @@ async function onUpgradeSourceDB(rawDb: lf.raw.BackStore) {
     }
     if (version < 4) {
         await rawDb.addTableColumn("sources", "imageOnly", false)
+        await rawDb.addTableColumn("sources", "hideRetweets", false)
     }
 }
 
@@ -148,6 +150,7 @@ async function migrateLovefieldToSQLite() {
                 textDir: (source.textDir as number) || 0,
                 hidden: (source.hidden as boolean) || false,
                 imageOnly: (source.imageOnly as boolean) || false,
+                hideRetweets: (source.hideRetweets as boolean) || false,
             }
         })
 
@@ -234,6 +237,7 @@ async function migrateNeDB() {
             doc.textDir = 0
             doc.hidden = false
             doc.imageOnly = false
+            doc.hideRetweets = false
             return sources.createRow(doc)
         })
         const iRows = itemDocs.map(doc => {

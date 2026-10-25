@@ -14,6 +14,9 @@ export const sourcesTable = sqliteTable("sources", {
     imageOnly: integer("imageOnly", { mode: "boolean" })
         .notNull()
         .default(false),
+    hideRetweets: integer("hideRetweets", { mode: "boolean" })
+        .notNull()
+        .default(false),
 })
 
 export const itemsTable = sqliteTable("items", {
